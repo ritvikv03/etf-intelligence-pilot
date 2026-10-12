@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>ETF intelligence briefing {{ r.report_id }}</title>
+<style>body{font-family:system-ui,sans-serif;max-width:1100px;margin:2rem auto;padding:0 1rem;line-height:1.45}
+table{border-collapse:collapse;margin:.75rem 0;width:100%}th,td{border:1px solid #bbb;padding:.3rem .5rem;text-align:left;font-size:.92rem}
+th{background:#f0f0f0}.banner{background:#fff3cd;border:2px solid #d39e00;padding:.6rem 1rem;font-weight:700}.draft{color:#a00}</style></head><body>
+{% if r.banner %}<div class="banner">{{ r.banner }}</div>{% endif %}
+<h1>Competitive ETF intelligence briefing - {{ r.client }}</h1>
+<p class="draft"><em>Status: DRAFT (unreviewed, not finalized). Report ID <code>{{ r.report_id }}</code>.</em></p>
+<table><tr><th>Profile / lookback</th><td>{{ r.profile }} / {{ r.lookback }}</td></tr>
+<tr><th>Window (local {{ r.timezone }}, [start, end))</th><td>{{ r.window.start }} to {{ r.window.end_exclusive }} (exclusive)</td></tr>
+<tr><th>Window (UTC)</th><td>{{ r.window.start_utc }} to {{ r.window.end_utc }}</td></tr>
+<tr><th>Baseline / current date</th><td>{{ r.window.baseline }} / {{ r.window.current }}</td></tr>
+<tr><th>Knowledge mode</th><td>{{ r.mode }}</td></tr><tr><th>Data cutoff</th><td>{{ r.cutoff }}</td></tr></table>
+<h2>1. Overview</h2>
+<ul><li>Active tracked products: {{ r.counts.baseline }} &rarr; {{ r.counts.current }} ({{ r.counts.change }}).</li>
+<li>Net assets (matched cohort, {{ r.matched.n }} of {{ r.matched.of }}): {{ r.matched.baseline }} &rarr; {{ r.matched.current }}, {{ r.matched.change }} ({{ r.matched.pct }}).</li>
+{% if r.weighted.state == "available" %}<li>Asset-weighted net expense ratio: {{ r.weighted.baseline }} &rarr; {{ r.weighted.current }} ({{ r.weighted.change }}).</li>{% endif %}</ul>
+<p><strong>Analyst implications:</strong> none generated; facts and calculations only.</p>
+<h2>2. Pillars</h2>
+{% for p in r.pillars %}<h3>{{ p.label }}</h3>
+{% if p.id == "product_activity" %}
+<p>Active products {{ r.counts.baseline }} &rarr; {{ r.counts.current }} ({{ r.counts.change }}).</p>
+{% if r.launched %}<table><tr><th>Effective launch</th><th>Date</th><th>Basis</th></tr>{% for l in r.launched %}<tr><td>{{ l.ticker }}</td><td>{{ l.launch_date }}</td><td>{{ l.basis }}</td></tr>{% endfor %}</table>{% endif %}
+{% if r.events %}<table><tr><th>Product(s)</th><th>Event</th><th>Announced</th><th>Effective</th><th>Status</th><th>Evidence</th></tr>
+{% for e in r.events %}<tr><td>{{ e.products }}</td><td>{{ e.type }}{% if e.late %} (late arrival){% endif %}</td><td>{{ e.announced }}</td><td>{{ e.effective }}</td><td>{{ e.status }}</td><td><a href="#ev-{{ e.evidence_id }}">{{ e.evidence_id }}</a></td></tr>{% endfor %}</table>
+{% else %}<p>No event proposals dated in this window among imported sources; this does not mean nothing happened in the market.</p>{% endif %}
+{% elif p.id == "assets_growth" %}
+<table><tr><th>Product</th><th>Baseline</th><th>As of</th><th>Current</th><th>As of</th><th>Change</th><th>%</th><th>In cohort</th></tr>
+{% for a in r.assets %}<tr><td>{{ a.ticker }}</td><td>{{ a.baseline }}</td><td>{{ a.baseline_asof }}</td><td>{{ a.current }}</td><td>{{ a.current_asof }}</td><td>{{ a.change }}</td><td>{{ a.pct }}</td><td>{{ a.cohort }}</td></tr>{% endfor %}</table>
+<p>Matched cohort ({{ r.matched.n }} of {{ r.matched.of }}): {{ r.matched.baseline }} (as of {{ r.matched.baseline_asof }}) &rarr; {{ r.matched.current }} (as of {{ r.matched.current_asof }}); {{ r.matched.change }} ({{ r.matched.pct }}).</p>
+<p>Full-universe snapshots: baseline {{ r.snapshot_baseline.text }} ({{ r.snapshot_baseline.cov }}); current {{ r.snapshot_current.text }} ({{ r.snapshot_current.cov }}). Membership differs; not a growth figure. Not net inflow.</p>
+{% elif p.id == "pricing_economics" %}
+<table><tr><th>Product</th><th>Baseline</th><th>Current</th><th>Change</th></tr>{% for f in r.fees %}<tr><td>{{ f.ticker }}</td><td>{{ f.baseline }}</td><td>{{ f.current }}</td><td>{{ f.change }}</td></tr>{% endfor %}</table>
+{% if r.weighted.state == "available" %}<p>Asset-weighted net expense ratio ({{ r.weighted.n }} of {{ r.weighted.of }} products, {{ r.weighted.weight }} of cohort assets): {{ r.weighted.baseline }} &rarr; {{ r.weighted.current }} ({{ r.weighted.change }}); product fee changes {{ r.weighted.fee_effect }}, asset-mix effect {{ r.weighted.mix_effect }}.</p>{% endif %}
+{% if r.proxy.state == "available" %}<p><strong>Annualized expense-based proxy</strong> ({{ r.proxy.n }} products): {{ r.proxy.baseline }} &rarr; {{ r.proxy.current }} ({{ r.proxy.change }}, {{ r.proxy.pct }}). A snapshot run-rate, not realized revenue.</p>{% else %}<p>Revenue unavailable; proxy disabled or no compatible inputs.</p>{% endif %}
+{% elif p.id == "themes_competition" %}<p>Taxonomy not implemented in this milestone; no theme conclusions drawn.</p>
+{% else %}<p>No template for this pillar in this milestone.</p>{% endif %}{% endfor %}
+<h2>3. Limitations and coverage</h2><ul>{% for l in r.limitations %}<li>{{ l }}</li>{% endfor %}</ul>
+<h2>4. Evidence register</h2>
+<table><tr><th>ID</th><th>Kind</th><th>Source(s)</th><th>Description</th><th>Date</th><th>First observed</th><th>Notes</th></tr>
+{% for e in r.register %}<tr id="ev-{{ e.id }}"><td><code>{{ e.id }}</code></td><td>{{ e.kind }}</td><td>{{ e.source }}</td><td>{% if e.url %}<a href="{{ e.url }}" rel="noopener noreferrer">{{ e.title }}</a>{% else %}{{ e.title }}{% endif %}</td><td>{{ e.date }}</td><td>{{ e.first_observed }}</td><td>{{ e.note }}</td></tr>{% endfor %}</table>
+<p>Config hash {{ r.manifest.config_hash }}. All arithmetic uses Decimal; no figure was generated by a model.</p>
+</body></html>

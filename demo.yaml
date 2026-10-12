@@ -1,0 +1,69 @@
+client_id: demo
+client_display_name: Demo client (synthetic data)
+mode: demo
+demo_banner: "DEMO - synthetic data. Not real products, issuers, or market values."
+database_path: data/demo/demo.sqlite3
+export_dir: exports/demo
+report_timezone: America/Chicago
+report_schedule: weekly
+report_mode: retrospective
+primary_asset_metric: net_assets
+primary_fee_metric: expense_ratio_net
+report_currency: USD
+require_same_group_as_of_date: true
+allow_automatic_daily_forward_fill: false
+max_asset_age_days: 120
+max_fee_age_days: 400
+max_fee_asset_date_gap_days: 120
+allow_revenue_proxy: true
+ai:
+  enabled: false
+  provider: ollama
+  base_url: http://127.0.0.1:11434
+  model_env_var: OLLAMA_MODEL
+  send_only_permitted_content: true
+review:
+  require_approval_before_finalize: true
+  auto_accept_ai_events: false
+universe:
+  listing_country: US
+  product_type: ETF
+  asset_classes: [equity, fixed_income]
+  issuer_ids: [demo_capital]
+watchlist_issuer_ids: [demo_capital]
+pillars:
+  - {id: product_activity, label: Product activity}
+  - {id: assets_growth, label: Assets and growth}
+  - {id: pricing_economics, label: Pricing and economics}
+  - {id: themes_competition, label: Themes and competition}
+sources:
+  - source_id: demo_news_import
+    source_type: manual_import
+    enabled: true
+    permission_status: synthetic_fixture
+    permission_reference: "Synthetic fixture authored for this repository"
+    retention_mode: full
+    ai_allowed: false
+    internal_report_allowed: true
+    redistribution_allowed: false
+    coverage_notes: Synthetic news fixtures.
+  - source_id: demo_syndicator
+    source_type: manual_import
+    enabled: true
+    permission_status: synthetic_fixture
+    permission_reference: "Synthetic fixture authored for this repository"
+    retention_mode: full
+    ai_allowed: false
+    internal_report_allowed: true
+    redistribution_allowed: false
+    coverage_notes: Synthetic syndicated copy of a news item.
+  - source_id: demo_metrics_import
+    source_type: manual_import
+    enabled: true
+    permission_status: synthetic_fixture
+    permission_reference: "Synthetic fixture authored for this repository"
+    retention_mode: full
+    ai_allowed: false
+    internal_report_allowed: true
+    redistribution_allowed: false
+    coverage_notes: Synthetic net assets and fee observations.

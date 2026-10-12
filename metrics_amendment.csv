@@ -1,0 +1,2 @@
+external_record_id,fund_id,metric_name,value,unit,currency,scope,asset_basis,as_of_date,effective_from,effective_to,available_at,available_at_precision,source_id,evidence_url,evidence_locator,revision,review_status
+m_gama_na_1007,demo_gamma,net_assets,5500000,currency_units,USD,product,net,2026-10-07,,,2026-10-08,date,demo_metrics_import,https://example.test/demo/gama,row 3 (amended),2,approved

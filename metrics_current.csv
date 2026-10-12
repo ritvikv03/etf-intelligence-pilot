@@ -1,0 +1,8 @@
+external_record_id,fund_id,metric_name,value,unit,currency,scope,asset_basis,as_of_date,effective_from,effective_to,available_at,available_at_precision,source_id,evidence_url,evidence_locator,revision,review_status
+m_alfa_na_1007,demo_alpha,net_assets,120000000,currency_units,USD,product,net,2026-10-07,,,2026-10-07,date,demo_metrics_import,https://example.test/demo/alfa,row 1,1,approved
+m_beta_na_1007,demo_beta,net_assets,45000000,currency_units,USD,product,net,2026-10-07,,,2026-10-07,date,demo_metrics_import,https://example.test/demo/beta,row 2,1,approved
+m_alfa_fee_1007,demo_alpha,expense_ratio_net,20,basis_points,,product,unknown,2026-10-07,2026-10-05,,2026-10-07,date,demo_metrics_import,https://example.test/demo/alfa,fee table,1,approved
+m_beta_fee_1007,demo_beta,expense_ratio_net,0.40,percent,,product,unknown,2026-10-07,,,2026-10-07,date,demo_metrics_import,https://example.test/demo/beta,fee table,1,approved
+m_gama_na_1007,demo_gamma,net_assets,5000000,currency_units,USD,product,net,2026-10-07,,,2026-10-07,date,demo_metrics_import,https://example.test/demo/gama,row 3,1,approved
+m_gama_fee_1007,demo_gamma,expense_ratio_net,0.35,percent,,product,unknown,2026-10-07,,,2026-10-07,date,demo_metrics_import,https://example.test/demo/gama,fee table,1,approved
+m_echoa_na_1007,demo_echo_a,net_assets,20000000,currency_units,USD,product,net,2026-10-07,,,2026-10-07,date,demo_metrics_import,https://example.test/demo/echo-a,row 4,1,approved

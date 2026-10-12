@@ -1,0 +1,6 @@
+external_record_id,fund_id,metric_name,value,unit,currency,scope,asset_basis,as_of_date,effective_from,effective_to,available_at,available_at_precision,source_id,evidence_url,evidence_locator,revision,review_status
+m_alfa_na_0930,demo_alpha,net_assets,100000000,currency_units,USD,product,net,2026-09-30,,,2026-09-30,date,demo_metrics_import,https://example.test/demo/alfa,row 1,1,approved
+m_beta_na_0930,demo_beta,net_assets,50000000,currency_units,USD,product,net,2026-09-30,,,2026-09-30,date,demo_metrics_import,https://example.test/demo/beta,row 2,1,approved
+m_alfa_fee_0930,demo_alpha,expense_ratio_net,0.25,percent,,product,unknown,2026-09-30,,,2026-09-30,date,demo_metrics_import,https://example.test/demo/alfa,fee table,1,approved
+m_beta_fee_0930,demo_beta,expense_ratio_net,0.0040,annual_decimal,,product,unknown,2026-09-30,,,2026-09-30,date,demo_metrics_import,https://example.test/demo/beta,fee table,1,approved
+m_echob_ta_0930,demo_echo_b,total_assets,9000000,currency_units,USD,product,gross,2026-09-30,,,2026-09-30,date,demo_metrics_import,https://example.test/demo/echo-b,row 5,1,approved

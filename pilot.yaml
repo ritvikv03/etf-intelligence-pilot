@@ -1,0 +1,59 @@
+# Real-pilot configuration. Everything real is disabled until permissions and identifiers are supplied.
+client_id: pilot_client
+client_display_name: Pilot asset-manager client
+mode: pilot
+database_path: data/pilot_client/pilot.sqlite3
+export_dir: exports/pilot_client
+report_timezone: America/Chicago
+report_schedule: weekly
+report_mode: retrospective
+primary_asset_metric: net_assets
+primary_fee_metric: expense_ratio_net
+report_currency: USD
+require_same_group_as_of_date: true
+allow_automatic_daily_forward_fill: false
+max_asset_age_days: 120
+max_fee_age_days: 400
+max_fee_asset_date_gap_days: 120
+allow_revenue_proxy: false
+ai:
+  enabled: false
+  provider: ollama
+  base_url: http://127.0.0.1:11434
+  model_env_var: OLLAMA_MODEL
+  send_only_permitted_content: true
+review:
+  require_approval_before_finalize: true
+  auto_accept_ai_events: false
+universe:
+  listing_country: US
+  product_type: ETF
+  asset_classes: [equity, fixed_income]
+  issuer_ids: [blackrock, wisdomtree, global_x]
+watchlist_issuer_ids: [blackrock, wisdomtree, global_x]
+pillars:
+  - {id: product_activity, label: Product activity}
+  - {id: assets_growth, label: Assets and growth}
+  - {id: pricing_economics, label: Pricing and economics}
+  - {id: themes_competition, label: Themes and competition}
+sources:
+  - source_id: approved_news_import
+    source_type: manual_import
+    enabled: false
+    permission_status: permission_required
+    permission_reference: null
+    retention_mode: metadata_only
+    ai_allowed: false
+    internal_report_allowed: false
+    redistribution_allowed: false
+    coverage_notes: Enable only after a named owner records the permission basis.
+  - source_id: approved_metrics_import
+    source_type: manual_import
+    enabled: false
+    permission_status: permission_required
+    permission_reference: null
+    retention_mode: metadata_only
+    ai_allowed: false
+    internal_report_allowed: false
+    redistribution_allowed: false
+    coverage_notes: Enable after an approved metric export is supplied.
