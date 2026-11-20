@@ -2,5 +2,9 @@
 __pycache__/
 *.egg-info/
 .pytest_cache/
+.env
+.env.*
+*.sqlite3
+*.sqlite3-*
 /data/
 /exports/

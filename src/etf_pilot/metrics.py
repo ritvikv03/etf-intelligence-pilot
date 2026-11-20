@@ -166,8 +166,14 @@ def compute_metrics(conn, cfg: ClientConfig, window: Window, cutoff: str) -> dic
     fee_cohort = [i for i in cohort if rows[i]["fee_baseline"].usable and rows[i]["fee_current"].usable]
     weighted = {"state": "unavailable", "fee_cohort": fee_cohort, "coverage_products": (len(fee_cohort), len(cohort)),
                 "coverage_asset_weight": None}
-    proxy = {"state": "unavailable_disabled" if not cfg.allow_revenue_proxy else "unavailable"}
-    if fee_cohort:
+    proxy_allowed = cfg.allow_revenue_proxy and cfg.primary_fee_metric == "expense_ratio_net"
+    proxy = {"state": "unavailable" if proxy_allowed else "unavailable_disabled"}
+    shared_asset_dates = all(_common_date([assets[i] for i in fee_cohort])[1] for assets in (a_b, a_c))
+    if cfg.require_same_group_as_of_date and not shared_asset_dates:
+        weighted["state"] = "unavailable_common_date"
+        if proxy_allowed:
+            proxy["state"] = "unavailable_common_date"
+    elif fee_cohort:
         wb = sum((a_b[i].value for i in fee_cohort), ZERO)
         wc = sum((a_c[i].value for i in fee_cohort), ZERO)
         if wb > 0 and wc > 0 and cohort:
@@ -176,11 +182,11 @@ def compute_metrics(conn, cfg: ClientConfig, window: Window, cutoff: str) -> dic
             fee_effect = sum(((a_b[i].value / wb) * (rows[i]["fee_current"].value - rows[i]["fee_baseline"].value)
                               for i in fee_cohort), ZERO) * 10000
             total_bps = (fc - fb) * 10000
-            cohort_base = sum((a_b[i].value for i in cohort), ZERO)
+            cohort_base = mb["total"]
             weighted.update({"state": "available", "baseline": fb, "current": fc, "change_bps": total_bps,
                              "product_fee_effect_bps": fee_effect, "composition_effect_bps": total_bps - fee_effect,
                              "coverage_asset_weight": (wb / cohort_base * 100) if cohort_base else None})
-        if cfg.allow_revenue_proxy:
+        if proxy_allowed:
             pb = sum((a_b[i].value * rows[i]["fee_baseline"].value for i in fee_cohort), ZERO)
             pc = sum((a_c[i].value * rows[i]["fee_current"].value for i in fee_cohort), ZERO)
             proxy = {"state": "available", "baseline": pb, "current": pc, "absolute_change": pc - pb,

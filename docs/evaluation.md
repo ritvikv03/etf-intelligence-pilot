@@ -1,5 +1,8 @@
 # Evaluation
 
+This page records the earlier branch verification at commit `70cd717`. See the
+[current validation report](validation_report.md) for the follow-up implementation and CLI acceptance results.
+
 ## November 20, 2026 validation
 
 A fresh Python 3.12.14 virtual environment on Linux x86_64 installed the listed requirements and the checkout in

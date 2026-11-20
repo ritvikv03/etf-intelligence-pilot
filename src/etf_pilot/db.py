@@ -44,6 +44,8 @@ def open_db(cfg: ClientConfig) -> sqlite3.Connection:
 
 def sync_sources(conn: sqlite3.Connection, cfg: ClientConfig) -> None:
     with conn:
+        # Imports use the active registry. Keep removed rows for archived provenance.
+        conn.execute("UPDATE sources SET enabled=0 WHERE enabled=1")
         for s in cfg.sources:
             conn.execute(
                 """INSERT INTO sources VALUES (?,?,?,?,?,?,?,?,?,?)
@@ -59,7 +61,7 @@ def sync_sources(conn: sqlite3.Connection, cfg: ClientConfig) -> None:
 
 
 def backup(cfg: ClientConfig, dest_dir: Path) -> Path:
-    """Consistent SQLite backup (sqlite3 backup API) plus config copy."""
+    """Create a consistent SQLite database backup."""
     dest_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     target = dest_dir / f"{cfg.client_id}-{stamp}.sqlite3"

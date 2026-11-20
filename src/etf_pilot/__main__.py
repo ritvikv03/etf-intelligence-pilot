@@ -3,8 +3,9 @@ from __future__ import annotations
 
 import argparse
 import sys
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from .config import ConfigError, load_config
 from .db import backup, open_db, utc_now
@@ -70,7 +71,7 @@ def main(argv=None) -> int:
                 _print_import(fn(conn, cfg, a.file, obs))
         elif a.cmd == "report":
             conn = open_db(cfg)
-            end = a.end or (DEMO_END if cfg.mode == "demo" else date.today())
+            end = a.end or (DEMO_END if cfg.mode == "demo" else datetime.now(ZoneInfo(cfg.report_timezone)).date())
             cutoff = a.cutoff or (DEMO_CUTOFF if cfg.mode == "demo" else utc_now())
             rep = generate_report(conn, cfg, a.lookback, end, cutoff, profile=f"{a.lookback}", start_date=a.start)
             print(f"report {rep['report_id']} (draft)\n  {rep['markdown']}\n  {rep['html']}\n  {rep['manifest']}")
@@ -87,12 +88,12 @@ def main(argv=None) -> int:
             print(f"config ok: {cfg.client_id} ({cfg.mode}); database {cfg.db_file}")
             for t in ("funds", "evidence", "events", "metric_observations", "reports"):
                 print(f"  {t}: {conn.execute(f'SELECT COUNT(*) FROM {t}').fetchone()[0]}")
-            print("  live endpoints tested: none (no network code in Milestone 1)")
+            print("  input mode: local CSV files")
             blocked = [s.source_id for s in cfg.sources if not s.enabled]
             print(f"  disabled sources: {', '.join(blocked) or 'none'}")
         elif a.cmd == "backup":
             print(backup(cfg, cfg.root / "data" / "backups" / cfg.client_id))
-    except (ConfigError, ValueError, FileNotFoundError) as e:
+    except (ConfigError, ValueError, FileNotFoundError, NotImplementedError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
     return 0

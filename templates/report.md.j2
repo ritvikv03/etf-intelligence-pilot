@@ -13,7 +13,7 @@
 | Baseline / current measurement date | {{ r.window.baseline }} / {{ r.window.current }} |
 | Knowledge mode | {{ r.mode }} |
 | Data cutoff (frozen) | {{ r.cutoff }} |
-| Universe | {{ r.universe.country }} {{ r.universe.type }}; issuers {{ r.universe.issuers | join(", ") }}; {{ r.universe.size }} approved products |
+| Tracked subset | {{ r.universe.country }}-listed {{ r.universe.type }}s from {{ r.universe.issuers | join(", ") or "no configured issuers" }} ({{ r.universe.size }} approved products) |
 
 ## 1. Overview
 
@@ -23,7 +23,7 @@
 
 - Net assets (matched cohort, {{ r.matched.n }} of {{ r.matched.of }} current products): {{ r.matched.baseline }} -> {{ r.matched.current }}, {{ r.matched.change }} ({{ r.matched.pct }}).
 {% if r.weighted.state == "available" %}
-- Asset-weighted net expense ratio ({{ r.weighted.n }} of {{ r.weighted.of }} cohort products): {{ r.weighted.baseline }} -> {{ r.weighted.current }} ({{ r.weighted.change }}).
+- Asset-weighted {{ r.fee_label }} ({{ r.weighted.n }} of {{ r.weighted.of }} cohort products): {{ r.weighted.baseline }} -> {{ r.weighted.current }} ({{ r.weighted.change }}).
 {% endif %}
 - {{ r.events | length }} event proposal(s) dated in the window, {{ r.pending_reviews }} awaiting review in total.
 
@@ -66,11 +66,11 @@ No event proposals with a publication date in this window among the imported sou
 {% if r.undated %}
 Undated items first observed in this window:
 {% for e in r.undated %}
-- {{ e.products | mdx }}: {{ e.type }} ({{ e.status }}) - [{{ e.evidence_id }}](#ev-{{ e.evidence_id }})
+- {{ e.products | mdx }}: {{ e.type }} ({{ e.status }}, effective date {{ e.effective }}) - [{{ e.evidence_id }}](#ev-{{ e.evidence_id }})
 {% endfor %}
 {% endif %}
 {% elif p.id == "assets_growth" %}
-Product-level net assets (fund net assets; USD). The matched cohort holds only products with compatible approved observations at both dates.
+Product-level fund net assets in {{ r.currency }}. The matched cohort holds only products with compatible approved observations at both dates.
 
 | Product | Baseline | As of | Current | As of | Change | % | In cohort |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -85,7 +85,7 @@ Product-level net assets (fund net assets; USD). The matched cohort holds only p
 
 Snapshots change membership between dates and must not be read as growth; use the matched cohort for like-for-like change. Net-asset movement is not net inflow.
 {% elif p.id == "pricing_economics" %}
-Net expense ratio, shown as an annual rate.
+{{ r.fee_label | capitalize }}, shown as an annual rate.
 
 | Product | Baseline | Current | Change |
 | --- | --- | --- | --- |
@@ -94,15 +94,15 @@ Net expense ratio, shown as an annual rate.
 {% endfor %}
 
 {% if r.weighted.state == "available" %}
-Asset-weighted net expense ratio (cohort products with fees at both dates: {{ r.weighted.n }} of {{ r.weighted.of }}, {{ r.weighted.weight }} of cohort baseline assets): {{ r.weighted.baseline }} -> {{ r.weighted.current }} ({{ r.weighted.change }}). Approximate decomposition at baseline weights: product fee changes {{ r.weighted.fee_effect }}, asset-mix effect {{ r.weighted.mix_effect }}.
+Asset-weighted {{ r.fee_label }} for {{ r.weighted.n }} of {{ r.weighted.of }} cohort products with fees at both dates (baseline asset coverage {{ r.weighted.weight }}). {{ r.weighted.baseline }} -> {{ r.weighted.current }} ({{ r.weighted.change }}). At baseline weights, product fee changes account for approximately {{ r.weighted.fee_effect }} and asset mix accounts for {{ r.weighted.mix_effect }}.
 {% else %}
-Asset-weighted fee unavailable (no compatible asset/fee pairs).
+Asset-weighted fee unavailable. See the coverage requirements below.
 {% endif %}
 
 {% if r.proxy.state == "available" %}
 **Annualized expense-based proxy** ({{ r.proxy.n }} products): {{ r.proxy.baseline }} -> {{ r.proxy.current }} ({{ r.proxy.change }}, {{ r.proxy.pct }}). This is a snapshot run-rate of net assets x net expense ratio. It is not realized revenue, issuer revenue, or revenue earned during the window, and expense ratios include costs beyond any issuer-retained fee.
 {% else %}
-Issuer/product revenue is unavailable; the expense-based proxy is disabled or has no compatible inputs.
+Issuer and product revenue are unavailable. The expense-based proxy is also unavailable for this report.
 {% endif %}
 {% elif p.id == "themes_competition" %}
 Theme and tag taxonomy is not implemented in this milestone, so no theme or competitive-positioning conclusions are drawn. Activity by issuer is visible in the event table above.
@@ -119,10 +119,10 @@ This pillar has no template in this milestone.
 
 Sources configured:
 
-| Source | Type | Enabled | Permission basis |
-| --- | --- | --- | --- |
+| Source | Type | Enabled | Permission status | Coverage |
+| --- | --- | --- | --- | --- |
 {% for s in r.sources %}
-| {{ s.id }} | {{ s.type }} | {{ "yes" if s.enabled else "no" }} | {{ s.permission }} |
+| {{ s.id | mdx }} | {{ s.type }} | {{ "yes" if s.enabled else "no" }} | {{ s.permission | mdx }} | {{ s.notes | mdx }} |
 {% endfor %}
 
 ## 4. Evidence register and calculation provenance

@@ -136,6 +136,29 @@ def test_rejected_product_rows_are_staged_with_location(cfg, conn, tmp_path):
     assert tuple(row) == ("p.csv", 3, "inception_date")
 
 
+def test_malformed_csv_rows_are_staged_without_losing_valid_rows(cfg, conn, tmp_path):
+    rows = PRODUCT_HDR + prod_row("a", "AAAA") + "too,short\n"
+    rows += prod_row("extra", "EEEE").rstrip("\n") + ",extra\n" + prod_row("b", "BBBB")
+    result = import_products(conn, cfg, write(tmp_path, "p.csv", rows))
+    assert (result.inserted, result.rejected) == (2, 2)
+    assert [r[0] for r in conn.execute("SELECT fund_id FROM funds ORDER BY fund_id")] == ["a", "b"]
+    assert [r[0] for r in conn.execute("SELECT row_number FROM rejected_rows ORDER BY row_number")] == [3, 4]
+
+
+def test_removed_source_stops_imports_and_keeps_observations(cfg, conn, tmp_path):
+    from etf_pilot.db import sync_sources
+
+    initial = metric_row("a1", "a", "net_assets", "5", "currency_units", "2026-09-30")
+    assert seed(cfg, conn, tmp_path, prod_row("a", "AAAA"), initial).inserted == 1
+    cfg.sources = [s for s in cfg.sources if s.source_id != "demo_metrics_import"]
+    sync_sources(conn, cfg)
+    new = metric_row("a2", "a", "net_assets", "6", "currency_units", "2026-10-07")
+    result = import_metrics(conn, cfg, write(tmp_path, "new.csv", METRIC_HDR + new), OBS)
+    assert result.rejected == 1 and result.errors[0]["field"] == "source_id"
+    stored = conn.execute("SELECT external_record_id, source_id FROM metric_observations").fetchall()
+    assert [tuple(r) for r in stored] == [("a1", "demo_metrics_import")]
+
+
 def test_identifiers_keep_leading_zeros(cfg, conn, tmp_path):
     line = "z,Z ETF,ZZZZ,V,US,ETF,demo_capital,USD,0001234567,S000012345,C000012345,2020-01-01,2020-01-01,actual,,,approved\n"
     import_products(conn, cfg, write(tmp_path, "p.csv", PRODUCT_HDR + line))
@@ -184,11 +207,25 @@ def test_ambiguous_ticker_is_queued_and_needs_explicit_resolution(cfg, conn, tmp
     assert json.loads(ev["candidate_fund_ids"]) == ["e1", "e2"]
     with pytest.raises(ValueError, match="ambiguous"):
         decide(conn, ev["event_id"], "accept", "reviewer1")
+    with pytest.raises(ValueError, match="effective date"):
+        decide(conn, ev["event_id"], "accept", "reviewer1", fund_id="e1", effective_date="2026-02-30")
+    assert conn.execute("SELECT COUNT(*) FROM review_actions").fetchone()[0] == 0
     decide(conn, ev["event_id"], "accept", "reviewer1", reason="venue A confirmed", fund_id="e1", effective_date="2026-10-30")
     ev = conn.execute("SELECT * FROM events").fetchone()
     assert (ev["review_status"], ev["fund_id"], ev["effective_date"]) == ("accepted", "e1", "2026-10-30")
     audit = conn.execute("SELECT reviewer,decision FROM review_actions WHERE entity_type='event'").fetchone()
     assert tuple(audit) == ("reviewer1", "accept")
+    edited = NEWS.format(t="Demo Capital to liquidate ECHO", u="https://x.test/l", p="2026-09-26", b="Updated details.")
+    result = import_news(conn, cfg, news_file(tmp_path, "edited.csv", edited), "2026-10-08T01:00:00Z")
+    assert result.inserted == 1
+    assert conn.execute("SELECT COUNT(*) FROM events").fetchone()[0] == 1
+    assert json.loads(ev["candidate_fund_ids"]) == ["e1", "e2"]
+
+    from etf_pilot.reports import build_context
+
+    event = build_context(conn, cfg, window(cfg), CUT, "test")["events"][0]
+    assert event["products"] == "ECHO [e1]"
+    assert event["status"] == "accepted" and event["effective"] == "2026-10-30"
 
 
 def test_metadata_only_source_never_retains_body(cfg, conn, tmp_path):
