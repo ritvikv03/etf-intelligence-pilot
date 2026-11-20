@@ -31,9 +31,11 @@ def test_month_end_and_leap_year():
     assert make_window("10_year", date(2026, 10, 8), "UTC").start_local == date(2016, 10, 8)
 
 
-def test_unavailable_lookbacks_fail_loudly():
-    with pytest.raises(NotImplementedError):
+def test_unresolved_archive_lookbacks_fail_loudly():
+    with pytest.raises(ValueError, match="requires a start date"):
         make_window("last_run", date(2026, 10, 8), "UTC")
+    with pytest.raises(ValueError, match="requires a start date"):
+        make_window("full_history", date(2026, 10, 8), "UTC")
     with pytest.raises(ValueError):
         make_window("custom", date(2026, 10, 8), "UTC")
 
@@ -105,7 +107,8 @@ def test_pilot_cli_defaults_to_the_report_time_zone(monkeypatch, tmp_path, capsy
     report = next(cfg.export_path.glob("*.md")).read_text()
     assert "2026-09-30 to 2026-10-07 (exclusive)" in report
     assert cli.main(["report", "pilot_client", "last_run"]) == 2
-    assert "not implemented" in capsys.readouterr().err
+    assert "later end date" in capsys.readouterr().err
+    assert cli.main(["report", "pilot_client", "last_run", "--end", "2026-10-08", "--cutoff", DEMO_CUTOFF]) == 0
 
 
 def test_observed_at_override_forbidden_outside_demo():
@@ -127,7 +130,7 @@ def test_full_demo_is_reproducible_and_idempotent(tmp_path):
     assert second["report"]["markdown"].read_text() == md1
     assert second["report"]["report_id"] == first["report"]["report_id"]
     assert "USD 165,000,000" in md1 and "-5.0 bp" in md1 and "(late arrival)" in md1
-    assert "ECHO [demo_echo_a]" in md1  # shared tickers are disambiguated
+    assert r"ECHO \[demo_echo_a\]" in md1  # shared tickers are disambiguated
     assert "needs review" in md1 and "Annualized expense-based proxy" in md1
     assert "DEMO - synthetic data" in md1 and "realized revenue" in md1
     # amendment (5.5M) used at the demo cutoff; original retained
@@ -143,8 +146,10 @@ def test_html_escapes_untrusted_text_and_blocks_unsafe_links(tmp_path):
     ctx = out["report"]["context"]
     ctx["register"].append({"id": "ev_x", "kind": "news", "source": "s", "title": "<script>alert(1)</script>", "url": None,
                             "date": "2026-10-01", "first_observed": "t", "note": "n"})
+    ctx["assets"][0]["ticker"] = "<script>alert(1)</script>"
     md, html = render(ctx)
     assert "<script>alert(1)</script>" not in html and "&lt;script&gt;" in html
+    assert "<script>alert(1)</script>" not in md and "&lt;script&gt;" in md
     from etf_pilot.reports import _safe_url
     assert _safe_url("javascript:alert(1)") is None and _safe_url("https://a.test/x") == "https://a.test/x"
 

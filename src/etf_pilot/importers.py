@@ -16,6 +16,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from .config import ClientConfig
 from .db import utc_now
+from .taxonomy import replace_tags, validated_tags
 
 PRODUCT_COLS = ("fund_id name ticker listing_venue listing_country product_type issuer_id currency cik series_id "
                 "class_id inception_date launch_date launch_date_basis closure_date identity_evidence_id "
@@ -91,8 +92,7 @@ def _iso_date(v: str) -> str | None:
     v = (v or "").strip()
     if not v:
         return None
-    date.fromisoformat(v)  # raises ValueError
-    return v
+    return date.fromisoformat(v).isoformat()
 
 
 def _decimal(v: str) -> Decimal:
@@ -168,6 +168,12 @@ def import_products(conn: sqlite3.Connection, cfg: ClientConfig, path: Path, *, 
             if source_id is not None and not r["identity_evidence_id"].strip():
                 raise _Bad("identity_evidence_id", "sourced identity requires an evidence reference",
                            "supply the filing link or evidence identifier")
+            tags = None
+            if "tag_ids" in r:
+                try:
+                    tags = validated_tags(cfg, (tag.strip() for tag in r["tag_ids"].split("|") if tag.strip()))
+                except ValueError as exc:
+                    raise _Bad("tag_ids", str(exc), "use taxonomy IDs separated by |") from None
         except _Bad as b:
             rows.err(i, b.field, b.msg, b.fix, source_id)
             continue
@@ -182,22 +188,34 @@ def import_products(conn: sqlite3.Connection, cfg: ClientConfig, path: Path, *, 
             if source_id is None and old is not None and tuple(old[c] for c in cols[:-1]) == new:
                 identity_source = old["identity_source_id"]
             new += (identity_source,)
+            previous_tags = None
+            if tags is not None and not conn.execute("SELECT 1 FROM tag_reviews WHERE fund_id=?", (new[0],)).fetchone():
+                previous_tags = tuple(
+                    row[0] for row in conn.execute("SELECT tag_id FROM product_tags WHERE fund_id=? ORDER BY tag_id", (new[0],))
+                )
+            tags_changed = previous_tags is not None and previous_tags != tags
             if old is None:
                 conn.execute(f"INSERT INTO funds({','.join(cols)}) VALUES ({','.join('?'*len(cols))})", new)
                 res.record("inserted", source_id)
-            elif tuple(old[c] for c in cols) == new:
+            elif tuple(old[c] for c in cols) == new and not tags_changed:
                 res.record("skipped", source_id)
             else:
                 prev = {c: old[c] for c in cols}
+                current = dict(zip(cols, new))
+                if tags_changed:
+                    prev["tag_ids"] = previous_tags
+                    current["tag_ids"] = tags
                 conn.execute("UPDATE funds SET " + ",".join(f"{c}=?" for c in cols[1:]) + " WHERE fund_id=?", new[1:] + (new[0],))
                 conn.execute("INSERT INTO review_actions(entity_type,entity_id,reviewer,decision,reason,previous_value,new_value,at) "
                              "VALUES ('fund',?,?,?,?,?,?,?)", (new[0], "import", "import_update", f"re-import of {path.name}",
-                                                              json.dumps(prev), json.dumps(dict(zip(cols, new))), utc_now()))
+                                                              json.dumps(prev), json.dumps(current), utc_now()))
                 res.record("inserted", source_id)
             for id_type in ("cik", "series_id", "class_id"):
                 v = r[id_type].strip()
                 if v:  # stored as strings so leading zeros survive
                     conn.execute("INSERT OR IGNORE INTO fund_identifiers VALUES (?,?,?)", (new[0], id_type, v))
+            if tags_changed:
+                replace_tags(conn, new[0], tags)
     _log_run(conn, "products", path.name, res, started)
     return res
 
@@ -261,10 +279,19 @@ def import_metrics(conn: sqlite3.Connection, cfg: ClientConfig, path: Path, obse
                 eff_from, eff_to = _iso_date(r["effective_from"]), _iso_date(r["effective_to"])
                 avail = _iso_date(r["available_at"])
                 revision = int(r["revision"].strip() or "1")
+                period_start = _iso_date(r.get("period_start", ""))
+                period_end = _iso_date(r.get("period_end", ""))
             except ValueError:
                 raise _Bad("as_of_date/effective/available_at/revision", "bad date or revision", "use YYYY-MM-DD and integer revision") from None
             if not as_of:
                 raise _Bad("as_of_date", "as_of_date is required", "supply the measurement date")
+            if name == "actual_revenue" and (
+                not period_start or not period_end or period_start >= period_end
+                or not period_start <= as_of < period_end or not r["currency"].strip()
+                or unit != "currency_units" or not r["evidence_locator"].strip()
+            ):
+                raise _Bad("period_start/period_end", "revenue requires a dated period, currency units, currency, and evidence",
+                           "supply the inclusive start, exclusive end, and a source locator for earned revenue")
             if not r["external_record_id"].strip():
                 raise _Bad("external_record_id", "required for idempotent re-import", "supply a stable id")
         except _Bad as b:
@@ -272,12 +299,13 @@ def import_metrics(conn: sqlite3.Connection, cfg: ClientConfig, path: Path, obse
             continue
         obs_id = "obs_" + hashlib.sha256(f"{sid}|{r['external_record_id'].strip()}|{revision}".encode()).hexdigest()[:16]
         record = (r["fund_id"].strip(), name, _canonical(value), norm_unit, r["currency"].strip() or None, scope, basis,
-                  as_of, eff_from, eff_to, avail, r["available_at_precision"].strip() or None)
+                  as_of, eff_from, eff_to, avail, r["available_at_precision"].strip() or None, period_start, period_end)
         existing = conn.execute("SELECT * FROM metric_observations WHERE obs_id=?", (obs_id,)).fetchone()
         if existing:
             same = (existing["fund_id"], existing["metric_name"], existing["value"], existing["unit"], existing["currency"],
                     existing["scope"], existing["asset_basis"], existing["as_of_date"], existing["effective_from"],
-                    existing["effective_to"], existing["available_at"], existing["available_at_precision"]) == record
+                    existing["effective_to"], existing["available_at"], existing["available_at_precision"],
+                    existing["period_start"], existing["period_end"]) == record
             if same:
                 res.record("skipped", sid)
             else:
@@ -285,11 +313,11 @@ def import_metrics(conn: sqlite3.Connection, cfg: ClientConfig, path: Path, obse
                          "corrections must use a new, higher revision number", sid)
             continue
         with conn:
-            conn.execute("INSERT INTO metric_observations VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            conn.execute("INSERT INTO metric_observations VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                          (obs_id, r["external_record_id"].strip(), sid, record[0], name, record[2], norm_unit, record[4], scope,
                           basis, as_of, eff_from, eff_to, avail, record[11], observed_at,
                           r["evidence_url"].strip() or None, r["evidence_locator"].strip() or None, revision,
-                          r["review_status"].strip(), format(raw, "f"), unit))
+                          r["review_status"].strip(), format(raw, "f"), unit, period_start, period_end))
         res.record("inserted", sid)
     _log_run(conn, "metrics", path.name, res, started)
     return res

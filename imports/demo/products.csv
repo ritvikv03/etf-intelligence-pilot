@@ -1,6 +1,6 @@
-fund_id,name,ticker,listing_venue,listing_country,product_type,issuer_id,currency,cik,series_id,class_id,inception_date,launch_date,launch_date_basis,closure_date,identity_evidence_id,review_status
-demo_alpha,Demo Alpha Equity ETF,ALFA,DEMO-A,US,ETF,demo_capital,USD,,,,2021-05-06,2021-05-06,actual,,,approved
-demo_beta,Demo Beta Bond ETF,BETA,DEMO-A,US,ETF,demo_capital,USD,,,,2022-03-14,2022-03-14,inception_proxy,,,approved
-demo_echo_a,Demo Echo Equity ETF,ECHO,DEMO-A,US,ETF,demo_capital,USD,,,,2024-05-09,2024-05-09,actual,,,approved
-demo_echo_b,Demo Echo Bond ETF,ECHO,DEMO-B,US,ETF,demo_capital,USD,,,,2025-02-18,2025-02-18,actual,,,approved
-demo_gamma,Demo Gamma Equity ETF,GAMA,DEMO-A,US,ETF,demo_capital,USD,,,,2026-10-05,2026-10-05,actual,,,approved
+fund_id,name,ticker,listing_venue,listing_country,product_type,issuer_id,currency,cik,series_id,class_id,inception_date,launch_date,launch_date_basis,closure_date,identity_evidence_id,review_status,tag_ids
+demo_alpha,Demo Alpha Equity ETF,ALFA,DEMO-A,US,ETF,demo_capital,USD,,,,2021-05-06,2021-05-06,actual,,,approved,small_cap|us_exposure|factor|demo_firm
+demo_beta,Demo Beta Bond ETF,BETA,DEMO-A,US,ETF,demo_capital,USD,,,,2022-03-14,2022-03-14,inception_proxy,,,approved,fixed_income|us_exposure|core|demo_firm
+demo_echo_a,Demo Echo Equity ETF,ECHO,DEMO-A,US,ETF,demo_capital,USD,,,,2024-05-09,2024-05-09,actual,,,approved,small_cap|international_exposure|thematic|demo_firm
+demo_echo_b,Demo Echo Bond ETF,ECHO,DEMO-B,US,ETF,demo_capital,USD,,,,2025-02-18,2025-02-18,actual,,,approved,fixed_income|us_exposure|demo_firm
+demo_gamma,Demo Gamma Equity ETF,GAMA,DEMO-A,US,ETF,demo_capital,USD,,,,2026-10-05,2026-10-05,actual,,,approved,equity|us_exposure|thematic|innovation|demo_firm

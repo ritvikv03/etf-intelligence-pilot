@@ -1,5 +1,28 @@
 # Offline ETF pilot validation
 
+## Local analyst workspace validation
+
+November 20, 2026. Started from the merged Phase 3 work on `main`. Installed the pinned dependencies
+and editable checkout in an isolated environment on Linux with Python 3.12.14.
+
+| Check | Result |
+| --- | --- |
+| Installation and unit suite | `pip check` passed. All 57 tests passed with socket creation denied. |
+| RSS and Atom behavior | Tests used controlled feed responses. Verified source failure isolation, conditional reads, preserved cursors, revisions, metadata-only retention, malformed input rejection, and overlap prevention. |
+| Taxonomy and calculations | The US exposure and small-cap intersection selected the expected product. Tests covered parent rollups, analyst tags surviving source imports, and exact-period revenue using synthetic values. The unchanged matched-asset and fee acceptance tests passed. |
+| Reporting and exports | Repeated CLI demos produced identical bytes. The tests and CLI exercised last-run and full-archive reports, late evidence, review and finalization, a simulated write failure, and export recovery. A rerun preserved finalized files. |
+| Browser | Desktop and mobile Chromium flows passed for opening the demo, selecting composite filters, running a briefing, reviewing and finalizing it, opening HTML, reviewing events and tags, uploading CSV news, checking RSS status, and moving the last-run window. The local server rejected an unauthenticated mutation without the workspace token. |
+| Migration and restore | Migrated a populated Phase 3 backup to schema 003 and compared prior report snapshots, evidence, observations, and reviews. Restored a finalized backup and recovered identical stored exports. |
+| Approved IVV sample | Re-ran the previously imported SEC observation through the upgraded report engine. It retained the same evidence ID and current snapshot, with baseline and actual revenue unavailable. |
+| Model adapter and evaluator | Controlled model responses passed the evaluated-model gate, citation checks, tag suggestion scoring, and fallback on an invalid citation. |
+
+The workspace proxy blocked a direct SEC feed check with CONNECT 403 before a server response. Live
+subscriptions and cross-fund recurring data remain unverified. The code supports a local model after an
+analyst evaluates an installed model on an approved corpus. The model tests used controlled responses.
+The supplied real config has no active collection or approved recurring financial dataset. The browser
+test served the local synthetic demo. Shared deployment and scheduling are rollout decisions. See
+[remaining rollout checks](next_milestones.md).
+
 ## Phase 3 source registry and real-data check
 
 November 20, 2026. PR #1 had already merged at `cb213e1`. A fresh virtual environment installed the

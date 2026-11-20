@@ -12,7 +12,8 @@ from decimal import Decimal as D
 from typing import Optional
 
 from .config import ClientConfig
-from .windows import Window
+from .taxonomy import select_funds
+from .windows import Window, previous_period_start
 
 ZERO = D(0)
 
@@ -37,8 +38,10 @@ class Sel:
 
 def select_observation(conn, cfg: ClientConfig, fund_id: str, metric: str, on_or_before: date, cutoff: str) -> Sel:
     rows = conn.execute(
-        "SELECT * FROM metric_observations WHERE fund_id=? AND metric_name=? AND as_of_date<=? AND first_observed_at<=?",
-        (fund_id, metric, on_or_before.isoformat(), cutoff)).fetchall()
+        """SELECT m.* FROM metric_observations m JOIN sources s ON m.source_id=s.source_id
+           WHERE m.fund_id=? AND m.metric_name=? AND m.first_observed_at<=?
+             AND s.internal_report_allowed=1 AND (m.available_at IS NULL OR m.available_at<=?)""",
+        (fund_id, metric, cutoff, cutoff[:10])).fetchall()
     latest: dict[tuple, sqlite3.Row] = {}
     for r in rows:
         k = (r["source_id"], r["external_record_id"])
@@ -48,6 +51,8 @@ def select_observation(conn, cfg: ClientConfig, fund_id: str, metric: str, on_or
     ok: list[sqlite3.Row] = []
     first_reason: Optional[str] = None
     for r in latest.values():
+        if r["as_of_date"] > on_or_before.isoformat():
+            continue
         reason = None
         if r["review_status"] != "approved":
             reason = "unapproved"
@@ -76,6 +81,50 @@ def pct_change(base: D, cur: D) -> Optional[D]:
     return None if base == 0 else (cur - base) * 100 / base
 
 
+def compute_revenue(conn, cfg: ClientConfig, window: Window, cutoff: str, fund_ids: set[str]) -> dict:
+    """Use reported product revenue for exact, comparable periods."""
+    previous = previous_period_start(window)
+    boundary = (window.start_local.isoformat(), window.end_local.isoformat())
+    baseline_boundary = (previous.isoformat(), boundary[0]) if previous else None
+    latest = {}
+    for row in conn.execute(
+        """SELECT m.* FROM metric_observations m JOIN sources s ON m.source_id=s.source_id
+           WHERE m.metric_name='actual_revenue' AND m.first_observed_at<=? AND s.internal_report_allowed=1
+             AND (m.available_at IS NULL OR m.available_at<=?) ORDER BY m.revision""",
+        (cutoff, cutoff[:10]),
+    ):
+        if row["fund_id"] in fund_ids:
+            latest[(row["source_id"], row["external_record_id"])] = row
+
+    def period_data(period):
+        records = {}
+        if period:
+            for row in latest.values():
+                if (row["period_start"], row["period_end"]) != period or row["review_status"] != "approved":
+                    continue
+                if row["scope"] == "product" and row["currency"] == cfg.report_currency and row["unit"] == "currency_units":
+                    records.setdefault(row["fund_id"], []).append(row)
+        return {
+            fid: max(rows, key=lambda row: (row["first_observed_at"], row["obs_id"]))
+            for fid, rows in records.items() if len({D(row["value"]) for row in rows}) == 1
+        }
+
+    current = period_data(boundary)
+    baseline = period_data(baseline_boundary)
+    common = current.keys() & baseline.keys()
+    current_total = sum((D(row["value"]) for row in current.values()), ZERO) if current else None
+    matched_current = sum((D(current[fid]["value"]) for fid in common), ZERO) if common else None
+    matched_baseline = sum((D(baseline[fid]["value"]) for fid in common), ZERO) if common else None
+    return {
+        "current": current_total, "coverage": len(current), "matched_size": len(common),
+        "matched_current": matched_current, "matched_baseline": matched_baseline,
+        "change": matched_current - matched_baseline if common else None,
+        "pct": pct_change(matched_baseline, matched_current) if common else None,
+        "period": boundary, "baseline_period": baseline_boundary,
+        "obs_ids": {row["obs_id"] for row in [*baseline.values(), *current.values()]},
+    }
+
+
 def active_on(f: sqlite3.Row, d: date) -> bool:
     if not f["launch_date"]:
         return False
@@ -102,10 +151,9 @@ def _total(sels: dict[str, Sel], require_common: bool) -> dict:
             "n": len(usable), "obs_ids": [s.obs["obs_id"] for s in usable.values()]}
 
 
-def compute_metrics(conn, cfg: ClientConfig, window: Window, cutoff: str) -> dict:
-    u = cfg.universe
-    funds = [f for f in conn.execute("SELECT * FROM funds WHERE review_status='approved' ORDER BY fund_id")
-             if f["listing_country"] == u.listing_country and f["product_type"] == u.product_type and f["issuer_id"] in u.issuer_ids]
+def compute_metrics(conn, cfg: ClientConfig, window: Window, cutoff: str, *, funds=None) -> dict:
+    if funds is None:
+        funds = select_funds(conn, cfg)
     base_d, cur_d = window.baseline_date, window.current_date
     unknown_lifecycle = [f["fund_id"] for f in funds if not f["launch_date"]]
     act_b = [f for f in funds if active_on(f, base_d)]

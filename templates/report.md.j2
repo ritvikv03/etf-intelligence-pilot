@@ -3,7 +3,7 @@
 {% endif %}
 # Competitive ETF intelligence briefing - {{ r.client }}
 
-*Status: DRAFT (unreviewed, not finalized). Report ID `{{ r.report_id }}`.*
+*Status: {{ r.status | upper }}. Report ID `{{ r.report_id }}`.*
 
 | Field | Value |
 | --- | --- |
@@ -14,6 +14,7 @@
 | Knowledge mode | {{ r.mode }} |
 | Data cutoff (frozen) | {{ r.cutoff }} |
 | Tracked subset | {{ r.universe.country }}-listed {{ r.universe.type }}s from {{ r.universe.issuers | join(", ") or "no configured issuers" }} ({{ r.universe.size }} approved products) |
+| Product tags | {{ r.universe.tags | join(", ") or "All in the tracked subset" }} |
 
 ## 1. Overview
 
@@ -27,8 +28,6 @@
 {% endif %}
 - {{ r.events | length }} event proposal(s) dated in the window, {{ r.pending_reviews }} awaiting review in total.
 
-**Analyst implications:** none generated. This template report contains facts and calculations only; implications are an analyst task.
-
 ## 2. Pillars
 
 {% for p in r.pillars %}
@@ -41,14 +40,14 @@ Active products: {{ r.counts.baseline }} -> {{ r.counts.current }} ({{ r.counts.
 | Effective launches in window | Launch date | Date basis |
 | --- | --- | --- |
 {% for l in r.launched %}
-| {{ l.ticker }} | {{ l.launch_date }} | {{ l.basis }} |
+| {{ l.ticker | mdx }} | {{ l.launch_date }} | {{ l.basis }} |
 {% endfor %}
 {% else %}
 No effective launches in the approved lifecycle data for this window.
 {% endif %}
 
 {% if r.closed %}
-Closures: {% for c in r.closed %}{{ c.ticker }} ({{ c.closure_date }}){% if not loop.last %}, {% endif %}{% endfor %}.
+Closures: {% for c in r.closed %}{{ c.ticker | mdx }} ({{ c.closure_date }}){% if not loop.last %}, {% endif %}{% endfor %}.
 
 {% endif %}
 **Announcements and developments (proposals from imported news)**
@@ -75,12 +74,12 @@ Product-level fund net assets in {{ r.currency }}. The matched cohort holds only
 | Product | Baseline | As of | Current | As of | Change | % | In cohort |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 {% for a in r.assets %}
-| {{ a.ticker }} | {{ a.baseline }} | {{ a.baseline_asof }} | {{ a.current }} | {{ a.current_asof }} | {{ a.change }} | {{ a.pct }} | {{ a.cohort }} |
+| {{ a.ticker | mdx }} | {{ a.baseline }} | {{ a.baseline_asof }} | {{ a.current }} | {{ a.current_asof }} | {{ a.change }} | {{ a.pct }} | {{ a.cohort }} |
 {% endfor %}
 
 | Aggregate | Baseline | Current | Change |
 | --- | --- | --- | --- |
-| Matched cohort ({{ r.matched.n }} of {{ r.matched.of }}; {{ r.matched.tickers | join(", ") or "none" }}) | {{ r.matched.baseline }} (as of {{ r.matched.baseline_asof }}) | {{ r.matched.current }} (as of {{ r.matched.current_asof }}) | {{ r.matched.change }} ({{ r.matched.pct }}) |
+| Matched cohort ({{ r.matched.n }} of {{ r.matched.of }}; {{ (r.matched.tickers | join(", ") or "none") | mdx }}) | {{ r.matched.baseline }} (as of {{ r.matched.baseline_asof }}) | {{ r.matched.current }} (as of {{ r.matched.current_asof }}) | {{ r.matched.change }} ({{ r.matched.pct }}) |
 | Full tracked-universe snapshot | {{ r.snapshot_baseline.text }}; as of {{ r.snapshot_baseline.asof }}; coverage {{ r.snapshot_baseline.cov }} | {{ r.snapshot_current.text }}; as of {{ r.snapshot_current.asof }}; coverage {{ r.snapshot_current.cov }} | not computed - membership differs between dates |
 
 Snapshots change membership between dates and must not be read as growth; use the matched cohort for like-for-like change. Net-asset movement is not net inflow.
@@ -90,7 +89,7 @@ Snapshots change membership between dates and must not be read as growth; use th
 | Product | Baseline | Current | Change |
 | --- | --- | --- | --- |
 {% for f in r.fees %}
-| {{ f.ticker }} | {{ f.baseline }} | {{ f.current }} | {{ f.change }} |
+| {{ f.ticker | mdx }} | {{ f.baseline }} | {{ f.current }} | {{ f.change }} |
 {% endfor %}
 
 {% if r.weighted.state == "available" %}
@@ -99,18 +98,34 @@ Asset-weighted {{ r.fee_label }} for {{ r.weighted.n }} of {{ r.weighted.of }} c
 Asset-weighted fee unavailable. See the coverage requirements below.
 {% endif %}
 
+Reported product revenue for the current period is {{ r.revenue.current }} ({{ r.revenue.coverage }} products).
+Matched-period change is {{ r.revenue.change }} ({{ r.revenue.pct }}, {{ r.revenue.matched_size }} products).
+
 {% if r.proxy.state == "available" %}
 **Annualized expense-based proxy** ({{ r.proxy.n }} products): {{ r.proxy.baseline }} -> {{ r.proxy.current }} ({{ r.proxy.change }}, {{ r.proxy.pct }}). This is a snapshot run-rate of net assets x net expense ratio. It is not realized revenue, issuer revenue, or revenue earned during the window, and expense ratios include costs beyond any issuer-retained fee.
 {% else %}
-Issuer and product revenue are unavailable. The expense-based proxy is also unavailable for this report.
+The expense-based proxy is unavailable for this report.
 {% endif %}
 {% elif p.id == "themes_competition" %}
-Theme and tag taxonomy is not implemented in this milestone, so no theme or competitive-positioning conclusions are drawn. Activity by issuer is visible in the event table above.
+The evidence summary covers available themes and competitor developments.
 {% else %}
 This pillar has no template in this milestone.
 {% endif %}
 
 {% endfor %}
+## Evidence summary
+
+{% if r.synthesis.method == "local_model" %}Local model analysis for analyst review.
+{% else %}Summary of archived reporting and reviewed or proposed events.
+{% endif %}
+{% if r.synthesis.get("notice") %}{{ r.synthesis.notice }}
+{% endif %}
+{% for item in r.synthesis["items"] %}
+- **{{ item.pillar | replace("_", " ") | capitalize }}**. {{ item.text | mdx }} {% for id in item.evidence_ids %}[{{ id }}](#ev-{{ id }}) {% endfor %}
+{% else %}
+No matching archived commentary is available.
+{% endfor %}
+
 ## 3. Limitations and coverage
 
 {% for l in r.limitations %}
@@ -130,7 +145,7 @@ Sources configured:
 | ID | Kind | Source(s) | Description | Date | First observed (UTC) | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 {% for e in r.register %}
-| <a id="ev-{{ e.id }}"></a>`{{ e.id }}` | {{ e.kind }} | {{ e.source | mdx }} | {% if e.url %}[{{ e.title | mdx }}]({{ e.url }}){% else %}{{ e.title | mdx }}{% endif %} | {{ e.date }} | {{ e.first_observed }} | {{ e.note | mdx }} |
+| <a id="ev-{{ e.id }}"></a>`{{ e.id }}` | {{ e.kind }} | {{ e.source | mdx }} | {% if e.url %}[{{ e.title | mdx }}]({{ e.url | mdurl }}){% else %}{{ e.title | mdx }}{% endif %} | {{ e.date }} | {{ e.first_observed }} | {{ e.note | mdx }} |
 {% endfor %}
 
 Methods: {{ r.manifest.method_versions | tojson }}; config hash `{{ r.manifest.config_hash }}`. All arithmetic uses Decimal; no figure was generated by a model. Observation IDs and evidence IDs are listed in the JSON manifest.

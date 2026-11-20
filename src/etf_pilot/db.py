@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -18,6 +19,23 @@ def connect(path: Path) -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
+
+
+@contextmanager
+def run_lock(database: Path, purpose: str):
+    """Use a separate SQLite lock so a long collection need not lock the data database."""
+    database.parent.mkdir(parents=True, exist_ok=True)
+    lock = sqlite3.connect(database.with_suffix(f".{purpose}.sqlite3"), timeout=0)
+    try:
+        try:
+            lock.execute("BEGIN EXCLUSIVE")
+        except sqlite3.OperationalError as error:
+            if error.sqlite_errorcode != sqlite3.SQLITE_BUSY:
+                raise
+            raise ValueError(f"a {purpose} run is already in progress") from None
+        yield
+    finally:
+        lock.close()
 
 
 def migrate(conn: sqlite3.Connection, migrations_dir: Path | None = None) -> list[str]:

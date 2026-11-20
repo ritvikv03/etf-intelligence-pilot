@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Literal, Optional
+from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import yaml
@@ -19,11 +20,16 @@ class AIConfig(_Strict):
     base_url: str = "http://127.0.0.1:11434"
     model_env_var: str = "OLLAMA_MODEL"
     send_only_permitted_content: bool = True
+    evaluation_path: str | None = None
 
     @model_validator(mode="after")
     def _local_only(self):
-        if not (self.base_url.startswith("http://127.0.0.1") or self.base_url.startswith("http://localhost")):
+        endpoint = urlsplit(self.base_url)
+        if (endpoint.scheme != "http" or endpoint.hostname not in {"127.0.0.1", "localhost", "::1"}
+                or endpoint.username is not None or endpoint.query or endpoint.fragment or endpoint.path not in {"", "/"}):
             raise ValueError("ai.base_url must be a local endpoint; hosted models are not permitted")
+        if self.enabled and (not self.evaluation_path or not self.send_only_permitted_content):
+            raise ValueError("AI needs a local model evaluation and permission-limited inputs")
         return self
 
 
@@ -42,6 +48,13 @@ class UniverseConfig(_Strict):
 class Pillar(_Strict):
     id: str
     label: str
+
+
+class ProductTag(_Strict):
+    id: str
+    dimension: Literal["issuer", "strategy", "asset_class", "geography", "exposure"]
+    label: str
+    parent_id: str | None = None
 
 
 class SourceConfig(_Strict):
@@ -86,6 +99,7 @@ class ClientConfig(_Strict):
     watchlist_issuer_ids: list[str] = []
     pillars: list[Pillar]
     sources: list[SourceConfig]
+    taxonomy: list[ProductTag] = []
     root: Path = Path(".")  # set by loader
 
     @model_validator(mode="after")
@@ -108,8 +122,6 @@ class ClientConfig(_Strict):
             raise ValueError("allow_automatic_daily_forward_fill=true is not supported")
         if self.report_mode == "as_known_then":
             raise ValueError("report_mode as_known_then is not implemented in Milestone 1")
-        if self.ai.enabled:
-            raise ValueError("ai.enabled=true is not implemented in Milestone 1 (templates only)")
         try:
             ZoneInfo(self.report_timezone)
         except (ZoneInfoNotFoundError, ValueError):
@@ -129,10 +141,27 @@ class ClientConfig(_Strict):
                 raise ValueError(f"source {s.source_id}: cannot enable with permission_status={s.permission_status}")
             if not (s.permission_reference or "").strip():
                 raise ValueError(f"source {s.source_id}: permission_reference is required to enable a source")
-            if s.source_type != "manual_import":
-                raise ValueError(f"source {s.source_id}: only manual_import is available in Milestone 1")
+            if s.source_type not in {"manual_import", "rss"}:
+                raise ValueError(f"source {s.source_id}: only manual_import and rss are available")
+            if s.source_type == "rss" and (
+                s.purpose != "news" or not s.endpoint or s.endpoint.scheme != "https" or not s.internal_report_allowed
+            ):
+                raise ValueError(f"source {s.source_id}: RSS requires an HTTPS news source with internal-report permission")
             if s.purpose and not (s.owner or "").strip():
                 raise ValueError(f"source {s.source_id}: owner is required to enable a source with a purpose")
+        if sum(s.enabled and s.source_type == "rss" for s in self.sources) > 10:
+            raise ValueError("enable at most ten RSS sources")
+        tags = {tag.id: tag for tag in self.taxonomy}
+        if len(tags) != len(self.taxonomy) or any(not t.id.strip() or "|" in t.id for t in self.taxonomy):
+            raise ValueError("taxonomy IDs must be unique, nonempty, and contain no pipe")
+        for tag in self.taxonomy:
+            seen = {tag.id}
+            parent = tag.parent_id
+            while parent is not None:
+                if parent in seen or parent not in tags or tags[parent].dimension != tag.dimension:
+                    raise ValueError(f"taxonomy parent of {tag.id} must be acyclic and in the same dimension")
+                seen.add(parent)
+                parent = tags[parent].parent_id
         return self
 
     @property

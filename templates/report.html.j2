@@ -5,18 +5,18 @@ table{border-collapse:collapse;margin:.75rem 0;width:100%}th,td{border:1px solid
 th{background:#f0f0f0}.banner{background:#fff3cd;border:2px solid #d39e00;padding:.6rem 1rem;font-weight:700}.draft{color:#a00}</style></head><body>
 {% if r.banner %}<div class="banner">{{ r.banner }}</div>{% endif %}
 <h1>Competitive ETF intelligence briefing - {{ r.client }}</h1>
-<p class="draft"><em>Status: DRAFT (unreviewed, not finalized). Report ID <code>{{ r.report_id }}</code>.</em></p>
+<p class="draft"><em>Status: {{ r.status | upper }}. Report ID <code>{{ r.report_id }}</code>.</em></p>
 <table><tr><th>Profile / lookback</th><td>{{ r.profile }} / {{ r.lookback }}</td></tr>
 <tr><th>Window (local {{ r.timezone }}, [start, end))</th><td>{{ r.window.start }} to {{ r.window.end_exclusive }} (exclusive)</td></tr>
 <tr><th>Window (UTC)</th><td>{{ r.window.start_utc }} to {{ r.window.end_utc }}</td></tr>
 <tr><th>Baseline / current date</th><td>{{ r.window.baseline }} / {{ r.window.current }}</td></tr>
 <tr><th>Knowledge mode</th><td>{{ r.mode }}</td></tr><tr><th>Data cutoff</th><td>{{ r.cutoff }}</td></tr>
-<tr><th>Tracked subset</th><td>{{ r.universe.country }}-listed {{ r.universe.type }}s from {{ r.universe.issuers | join(", ") or "no configured issuers" }} ({{ r.universe.size }} approved products)</td></tr></table>
+<tr><th>Tracked subset</th><td>{{ r.universe.country }}-listed {{ r.universe.type }}s from {{ r.universe.issuers | join(", ") or "no configured issuers" }} ({{ r.universe.size }} approved products)</td></tr>
+<tr><th>Product tags</th><td>{{ r.universe.tags | join(", ") or "All in the tracked subset" }}</td></tr></table>
 <h2>1. Overview</h2>
 <ul><li>Active tracked products: {{ r.counts.baseline }} &rarr; {{ r.counts.current }} ({{ r.counts.change }}).</li>
 <li>Net assets (matched cohort, {{ r.matched.n }} of {{ r.matched.of }}): {{ r.matched.baseline }} &rarr; {{ r.matched.current }}, {{ r.matched.change }} ({{ r.matched.pct }}).</li>
 {% if r.weighted.state == "available" %}<li>Asset-weighted {{ r.fee_label }} for {{ r.weighted.n }} of {{ r.weighted.of }} cohort products: {{ r.weighted.baseline }} &rarr; {{ r.weighted.current }} ({{ r.weighted.change }}).</li>{% endif %}</ul>
-<p><strong>Analyst implications:</strong> none generated; facts and calculations only.</p>
 <h2>2. Pillars</h2>
 {% for p in r.pillars %}<h3>{{ p.label }}</h3>
 {% if p.id == "product_activity" %}
@@ -40,9 +40,18 @@ th{background:#f0f0f0}.banner{background:#fff3cd;border:2px solid #d39e00;paddin
 <table><tr><th>Product</th><th>Baseline</th><th>Current</th><th>Change</th></tr>{% for f in r.fees %}<tr><td>{{ f.ticker }}</td><td>{{ f.baseline }}</td><td>{{ f.current }}</td><td>{{ f.change }}</td></tr>{% endfor %}</table>
 {% if r.weighted.state == "available" %}<p>Asset-weighted {{ r.fee_label }} for {{ r.weighted.n }} of {{ r.weighted.of }} cohort products with fees at both dates (baseline asset coverage {{ r.weighted.weight }}). {{ r.weighted.baseline }} &rarr; {{ r.weighted.current }} ({{ r.weighted.change }}). At baseline weights, product fee changes account for approximately {{ r.weighted.fee_effect }} and asset mix accounts for {{ r.weighted.mix_effect }}.</p>
 {% else %}<p>Asset-weighted fee unavailable. See the coverage requirements below.</p>{% endif %}
-{% if r.proxy.state == "available" %}<p><strong>Annualized expense-based proxy</strong> ({{ r.proxy.n }} products): {{ r.proxy.baseline }} &rarr; {{ r.proxy.current }} ({{ r.proxy.change }}, {{ r.proxy.pct }}). This is a snapshot run-rate. Realized revenue is unavailable.</p>{% else %}<p>Issuer and product revenue are unavailable. The expense-based proxy is also unavailable for this report.</p>{% endif %}
-{% elif p.id == "themes_competition" %}<p>Taxonomy not implemented in this milestone; no theme conclusions drawn.</p>
+<p>Reported product revenue for the current period is {{ r.revenue.current }} ({{ r.revenue.coverage }} products).
+Matched-period change is {{ r.revenue.change }} ({{ r.revenue.pct }}, {{ r.revenue.matched_size }} products).</p>
+{% if r.proxy.state == "available" %}<p><strong>Annualized expense-based proxy</strong> ({{ r.proxy.n }} products): {{ r.proxy.baseline }} &rarr; {{ r.proxy.current }} ({{ r.proxy.change }}, {{ r.proxy.pct }}). This is a snapshot run-rate. Realized revenue requires its own observations.</p>{% else %}<p>The expense-based proxy is unavailable for this report.</p>{% endif %}
+{% elif p.id == "themes_competition" %}<p>The evidence summary covers available themes and competitor developments.</p>
 {% else %}<p>No template for this pillar in this milestone.</p>{% endif %}{% endfor %}
+<h2>Evidence summary</h2>
+{% if r.synthesis.method == "local_model" %}<p>Local model analysis for analyst review.</p>
+{% else %}<p>Summary of archived reporting and reviewed or proposed events.</p>{% endif %}
+{% if r.synthesis.get("notice") %}<p>{{ r.synthesis.notice }}</p>{% endif %}
+<ul>{% for item in r.synthesis["items"] %}
+<li><strong>{{ item.pillar | replace("_", " ") | capitalize }}</strong>. {{ item.text }} {% for id in item.evidence_ids %}<a href="#ev-{{ id }}">{{ id }}</a> {% endfor %}</li>
+{% else %}<li>No matching archived commentary is available.</li>{% endfor %}</ul>
 <h2>3. Limitations and coverage</h2><ul>{% for l in r.limitations %}<li>{{ l }}</li>{% endfor %}</ul>
 <table><tr><th>Source</th><th>Type</th><th>Purpose</th><th>Enabled</th><th>Permission status</th><th>Update frequency</th><th>Coverage</th></tr>
 {% for s in r.sources %}<tr><td>{{ s.id }}</td><td>{{ s.type }}</td><td>{{ s.purpose }}</td><td>{{ "yes" if s.enabled else "no" }}</td><td>{{ s.permission }}</td><td>{{ s.frequency }}</td><td>{{ s.notes }}</td></tr>{% endfor %}</table>

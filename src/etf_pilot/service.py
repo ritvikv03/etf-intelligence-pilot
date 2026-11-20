@@ -1,4 +1,4 @@
-"""Shared service layer used by the CLI (and later the UI). One implementation of every calculation."""
+"""Shared workflows for the CLI and analyst workspace."""
 from __future__ import annotations
 
 from datetime import date
