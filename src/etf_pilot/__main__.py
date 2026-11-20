@@ -8,7 +8,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from .config import ConfigError, load_config
-from .db import backup, open_db, utc_now
+from .db import backup, open_db, source_health, utc_now
 from .importers import import_metrics, import_news, import_products
 from .reports import generate_report
 from .review import decide, list_pending
@@ -33,6 +33,8 @@ def main(argv=None) -> int:
         s.add_argument("client")
         s.add_argument("file", type=Path)
         s.add_argument("--observed-at", help="demo mode only")
+        if name == "import-products":
+            s.add_argument("--source-id", help="enabled product identity source for this file")
     s = sub.add_parser("report")
     s.add_argument("client")
     s.add_argument("lookback", choices=LOOKBACKS)
@@ -64,7 +66,7 @@ def main(argv=None) -> int:
         elif a.cmd in ("import-products", "import-metrics", "import-news"):
             conn = open_db(cfg)
             if a.cmd == "import-products":
-                _print_import(import_products(conn, cfg, a.file))
+                _print_import(import_products(conn, cfg, a.file, source_id=a.source_id))
             else:
                 obs = check_observed_override(cfg, a.observed_at)
                 fn = import_metrics if a.cmd == "import-metrics" else import_news
@@ -89,8 +91,16 @@ def main(argv=None) -> int:
             for t in ("funds", "evidence", "events", "metric_observations", "reports"):
                 print(f"  {t}: {conn.execute(f'SELECT COUNT(*) FROM {t}').fetchone()[0]}")
             print("  input mode: local CSV files")
-            blocked = [s.source_id for s in cfg.sources if not s.enabled]
-            print(f"  disabled sources: {', '.join(blocked) or 'none'}")
+            print("  source import health")
+            for s in source_health(conn):
+                state = "enabled" if s["enabled"] else "disabled"
+                purpose = s["purpose"] or "unspecified purpose"
+                owner = s["owner"] or "unassigned"
+                last_result = s["status"]
+                if s["finished_at"]:
+                    last_result += (f" at {s['finished_at']} (inserted={s['inserted']}, "
+                                    f"skipped={s['skipped']}, rejected={s['rejected']})")
+                print(f"    {s['source_id']} ({purpose}, {state}, owner={owner}): {last_result}")
         elif a.cmd == "backup":
             print(backup(cfg, cfg.root / "data" / "backups" / cfg.client_id))
     except (ConfigError, ValueError, FileNotFoundError, NotImplementedError) as e:

@@ -6,7 +6,9 @@
 
 | Table | Grain / key | Notes |
 | --- | --- | --- |
-| funds | `fund_id` (one ETF product) | `launch_date_basis`: actual / inception_proxy / conversion / unknown; active from launch_date through day before closure_date; unknown launch date = excluded from counts |
+| sources | `source_id` | YAML registry with purpose, endpoint, owner, permissions, retention, coverage and frequency. Removed sources stay in the database for provenance with imports disabled. |
+| source_import_runs | `run_id` + `source_id` | Inserted, skipped and rejected row counts per source in a local CSV batch. The matching ingestion run records the finish time. |
+| funds | `fund_id` (one ETF product) | Optional `identity_source_id` and evidence reference for sourced imports. Launch date basis is actual, inception proxy, conversion, or unknown. Active from launch through the day before closure. Unknown launch dates are excluded from counts. |
 | fund_identifiers | fund_id + type + value | cik, series_id, class_id |
 | evidence | `evidence_id` per (source, external id, content hash) | revisions numbered; `published_at` != `first_observed_at` != `retrieved_at`; body NULL when retention is metadata_only |
 | evidence_associations | evidence x source record | syndicated copies keep provenance without new evidence |

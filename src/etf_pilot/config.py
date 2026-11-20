@@ -6,7 +6,7 @@ from typing import Literal, Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import yaml
-from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, HttpUrl, ValidationError, model_validator
 
 
 class _Strict(BaseModel):
@@ -55,6 +55,10 @@ class SourceConfig(_Strict):
     internal_report_allowed: bool = False
     redistribution_allowed: bool = False
     coverage_notes: str = ""
+    purpose: Literal["news", "product_identity", "fund_metrics", "actual_revenue"] | None = None
+    endpoint: HttpUrl | None = None
+    owner: str | None = None
+    update_frequency: str = "manual"
 
 
 class ClientConfig(_Strict):
@@ -110,7 +114,15 @@ class ClientConfig(_Strict):
             ZoneInfo(self.report_timezone)
         except (ZoneInfoNotFoundError, ValueError):
             raise ValueError(f"report_timezone must name an available IANA time zone: {self.report_timezone}") from None
+        source_ids = set()
         for s in self.sources:
+            if not s.source_id or s.source_id != s.source_id.strip():
+                raise ValueError("source_id must be nonempty and have no surrounding whitespace")
+            if s.source_id in source_ids:
+                raise ValueError(f"duplicate source_id: {s.source_id}")
+            source_ids.add(s.source_id)
+            if s.endpoint and (s.endpoint.username is not None or s.endpoint.password is not None):
+                raise ValueError(f"source {s.source_id}: endpoint must not contain credentials")
             if not s.enabled:
                 continue
             if s.permission_status.strip().lower() in ("", "permission_required", "unknown"):
@@ -119,6 +131,8 @@ class ClientConfig(_Strict):
                 raise ValueError(f"source {s.source_id}: permission_reference is required to enable a source")
             if s.source_type != "manual_import":
                 raise ValueError(f"source {s.source_id}: only manual_import is available in Milestone 1")
+            if s.purpose and not (s.owner or "").strip():
+                raise ValueError(f"source {s.source_id}: owner is required to enable a source with a purpose")
         return self
 
     @property
