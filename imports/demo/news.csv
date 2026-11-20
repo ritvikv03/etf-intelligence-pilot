@@ -1,0 +1,6 @@
+external_record_id,source_id,title,url,published_at,date_precision,body_or_excerpt,permission_reference,retention_mode,ai_allowed
+n_gama_launch,demo_news_import,Demo Capital launches GAMA,https://example.test/demo/news/gama,2026-10-05,date,GAMA began trading on October 5.,,full,false
+n_gama_syndicated,demo_syndicator,Demo Capital launches GAMA,https://example.test/demo/news/gama?utm_source=syndicator,2026-10-05,date,GAMA began trading on October 5.,,full,false
+n_gama_launch,demo_news_import,Demo Capital launches GAMA,https://example.test/demo/news/gama,2026-10-05,date,GAMA began trading on October 5 on DEMO-A.,,full,false
+n_alfa_fee,demo_news_import,ALFA expense ratio reduced,https://example.test/demo/news/alfa,2026-09-29,date,The net expense ratio moves to 0.20% effective October 5.,,full,false
+n_echo_closure,demo_news_import,ECHO closure announced,https://example.test/demo/news/echo,,unknown,The notice identifies the fund only by its ticker.,,full,false

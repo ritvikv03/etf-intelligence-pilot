@@ -52,13 +52,21 @@ class _Rows:
 
     def __init__(self, path: Path, required: list[str], res: ImportResult):
         self.path, self.res = path, res
-        with open(path, newline="", encoding="utf-8-sig") as fh:
-            rd = csv.DictReader(fh)
-            self.header = rd.fieldnames or []
-            self.rows = list(rd)
-        missing = [c for c in required if c not in self.header]
-        if missing:
-            raise ValueError(f"{path.name}: missing columns {missing}; see imports/templates/")
+        self.required = required
+
+    def __iter__(self):
+        with self.path.open(newline="", encoding="utf-8-sig") as fh:
+            reader = csv.DictReader(fh)
+            header = reader.fieldnames or []
+            missing = [column for column in self.required if column not in header]
+            if missing:
+                raise ValueError(f"{self.path.name}: missing columns {missing}, see imports/templates/")
+            for row_number, row in enumerate(reader, start=2):
+                if None in row or None in row.values():
+                    self.err(row_number, None, "row does not match the header's column count",
+                             "use the CSV template and quote values containing commas")
+                    continue
+                yield row_number, row
 
     def err(self, rownum: int, fieldname: str | None, msg: str, fix: str):
         self.res.errors.append({"file": self.path.name, "row": rownum, "field": fieldname, "message": msg, "suggestion": fix})
@@ -109,7 +117,7 @@ def import_products(conn: sqlite3.Connection, cfg: ClientConfig, path: Path) -> 
     res = ImportResult("products", path.name)
     started = utc_now()
     rows = _Rows(path, PRODUCT_COLS, res)
-    for i, r in enumerate(rows.rows, start=2):
+    for i, r in rows:
         try:
             for c in ("fund_id", "name", "ticker", "listing_country", "product_type", "issuer_id", "currency"):
                 if not r[c].strip():
@@ -170,7 +178,7 @@ def import_metrics(conn: sqlite3.Connection, cfg: ClientConfig, path: Path, obse
     rows = _Rows(path, METRIC_COLS, res)
     enabled = {r[0] for r in conn.execute("SELECT source_id FROM sources WHERE enabled=1 AND internal_report_allowed=1")}
     funds = {r[0] for r in conn.execute("SELECT fund_id FROM funds")}
-    for i, r in enumerate(rows.rows, start=2):
+    for i, r in rows:
         try:
             sid = r["source_id"].strip()
             if sid not in enabled:
@@ -250,7 +258,7 @@ def import_news(conn: sqlite3.Connection, cfg: ClientConfig, path: Path, observe
     started = utc_now()
     rows = _Rows(path, NEWS_COLS, res)
     enabled = {r[0]: r for r in conn.execute("SELECT * FROM sources WHERE enabled=1 AND internal_report_allowed=1")}
-    for i, r in enumerate(rows.rows, start=2):
+    for i, r in rows:
         try:
             sid = r["source_id"].strip()
             if sid not in enabled:

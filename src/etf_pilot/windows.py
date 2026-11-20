@@ -42,7 +42,7 @@ class Window:
 def make_window(lookback: str, end_date: date, tzname: str, start_date: date | None = None) -> Window:
     """end_date is the exclusive local end (the report's boundary day, at its start)."""
     if lookback in ("last_run", "full_history"):
-        raise NotImplementedError(f"lookback '{lookback}' needs report checkpoints/full history (Milestone 4)")
+        raise NotImplementedError(f"lookback '{lookback}' is not implemented in this milestone")
     if lookback not in LOOKBACKS:
         raise ValueError(f"unknown lookback '{lookback}'; choose from {LOOKBACKS}")
     tz = ZoneInfo(tzname)

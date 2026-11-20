@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 
 from .db import utc_now
 
@@ -20,6 +21,14 @@ def decide(conn, event_id: str, decision: str, reviewer: str, reason: str = "", 
            effective_date: str | None = None, now: str | None = None) -> None:
     if decision not in DECISIONS:
         raise ValueError(f"decision must be one of {sorted(DECISIONS)}")
+    reviewer = reviewer.strip()
+    if not reviewer:
+        raise ValueError("reviewer is required")
+    if effective_date is not None:
+        try:
+            effective_date = date.fromisoformat(effective_date).isoformat()
+        except ValueError:
+            raise ValueError("effective date must be a valid YYYY-MM-DD date") from None
     ev = conn.execute("SELECT * FROM events WHERE event_id=?", (event_id,)).fetchone()
     if ev is None:
         raise ValueError(f"unknown event {event_id}")
@@ -27,7 +36,7 @@ def decide(conn, event_id: str, decision: str, reviewer: str, reason: str = "", 
         resolved = fund_id or ev["fund_id"]
         if not resolved:
             raise ValueError("ambiguous or unmatched event: pass --fund-id to resolve identity before accepting")
-        if resolved not in json.loads(ev["candidate_fund_ids"]) and not conn.execute("SELECT 1 FROM funds WHERE fund_id=?", (resolved,)).fetchone():
+        if not conn.execute("SELECT 1 FROM funds WHERE fund_id=?", (resolved,)).fetchone():
             raise ValueError(f"unknown fund {resolved}")
     else:
         resolved = ev["fund_id"]
@@ -37,7 +46,5 @@ def decide(conn, event_id: str, decision: str, reviewer: str, reason: str = "", 
     with conn:
         conn.execute("UPDATE events SET review_status=?, fund_id=?, effective_date=?, approved_at=? WHERE event_id=?",
                      (new["review_status"], resolved, new["effective_date"], at if decision == "accept" else None, event_id))
-        if decision == "accept" and resolved:
-            conn.execute("UPDATE events SET candidate_fund_ids=? WHERE event_id=?", (json.dumps([resolved]), event_id))
         conn.execute("INSERT INTO review_actions(entity_type,entity_id,reviewer,decision,reason,previous_value,new_value,at) VALUES ('event',?,?,?,?,?,?,?)",
                      (event_id, reviewer, decision, reason, json.dumps(prev), json.dumps(new), at))

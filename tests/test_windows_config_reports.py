@@ -52,17 +52,60 @@ def test_config_rejects_unknown_keys_and_unsafe_modes(tmp_path):
         attempt(bogus=1)
     with pytest.raises(ConfigError, match="demo"):
         attempt(database_path="data/pilot/real.sqlite3")
+    with pytest.raises(ConfigError, match="export_dir"):
+        attempt(export_dir="exports/pilot_client")
     with pytest.raises(ConfigError, match="forward_fill"):
         attempt(allow_automatic_daily_forward_fill=True)
     with pytest.raises(ConfigError, match="local endpoint"):
         attempt(ai={**base["ai"], "base_url": "https://api.hosted.example"})
     with pytest.raises(ConfigError, match="report_timezone|primary_fee_metric"):
         attempt(primary_fee_metric="revenue")
+    with pytest.raises(ConfigError, match="report_timezone"):
+        attempt(report_timezone="Not/A_Zone")
+    with pytest.raises(ConfigError, match="permission_reference"):
+        attempt(sources=[{**base["sources"][0], "permission_reference": " "}])
+    with pytest.raises(ConfigError, match="manual_import"):
+        attempt(sources=[{**base["sources"][0], "source_type": "sec_nport_local"}])
 
 
 def test_pilot_config_is_isolated_and_has_no_enabled_sources():
     cfg = load_config("pilot_client", root=ROOT)
     assert "demo" not in cfg.database_path and not any(s.enabled for s in cfg.sources)
+
+
+def test_empty_pilot_report_labels_subset_and_missing_coverage(tmp_path):
+    import json
+    from etf_pilot.db import open_db
+    from etf_pilot.reports import generate_report
+
+    cfg = load_config(str(ROOT / "configs" / "pilot.yaml"), root=tmp_path)
+    with open_db(cfg) as conn:
+        report = generate_report(conn, cfg, "weekly", date(2026, 10, 8), DEMO_CUTOFF)
+    for kind in ("html", "markdown"):
+        text = report[kind].read_text()
+        assert "Tracked subset" in text and "US-listed ETFs" in text
+        assert "No approved products" in text and "No sources are enabled" in text
+        assert "approved_metrics_import" in text
+    assert json.loads(report["manifest"].read_text())["universe"]["size"] == 0
+
+
+def test_pilot_cli_defaults_to_the_report_time_zone(monkeypatch, tmp_path, capsys):
+    from datetime import datetime, timezone
+    from etf_pilot import __main__ as cli
+
+    class FixedClock(datetime):
+        @classmethod
+        def now(cls, tz):
+            return cls(2026, 10, 8, 1, tzinfo=timezone.utc).astimezone(tz)
+
+    cfg = load_config(str(ROOT / "configs" / "pilot.yaml"), root=tmp_path)
+    monkeypatch.setattr(cli, "load_config", lambda _: cfg)
+    monkeypatch.setattr(cli, "datetime", FixedClock, raising=False)
+    assert cli.main(["report", "pilot_client", "weekly", "--cutoff", DEMO_CUTOFF]) == 0
+    report = next(cfg.export_path.glob("*.md")).read_text()
+    assert "2026-09-30 to 2026-10-07 (exclusive)" in report
+    assert cli.main(["report", "pilot_client", "last_run"]) == 2
+    assert "not implemented" in capsys.readouterr().err
 
 
 def test_observed_at_override_forbidden_outside_demo():

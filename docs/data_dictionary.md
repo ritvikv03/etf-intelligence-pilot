@@ -10,7 +10,7 @@
 | fund_identifiers | fund_id + type + value | cik, series_id, class_id |
 | evidence | `evidence_id` per (source, external id, content hash) | revisions numbered; `published_at` != `first_observed_at` != `retrieved_at`; body NULL when retention is metadata_only |
 | evidence_associations | evidence x source record | syndicated copies keep provenance without new evidence |
-| events | `event_id` per (evidence, type) | proposals; `needs_review` when 0 or >1 candidate funds; `effective_date` only from review, never from the publication date |
+| events | `event_id` per (evidence, type) | `candidate_fund_ids` records the proposal's matches; an accepted review records the resolved `fund_id` and may supply `effective_date` |
 | metric_observations | (source, external_record_id, revision) | `as_of_date` (measurement), `available_at` (source availability, may be empty), `first_observed_at` (set by importer), `effective_from/to` (fees) |
 | review_actions | audit trail | reviewer, decision, previous/new values |
 | reports | `report_id` = hash(profile, window, mode, cutoff, client) | status `draft`; snapshot JSON stored |

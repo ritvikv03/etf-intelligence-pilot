@@ -2,6 +2,8 @@
 from datetime import date
 from decimal import Decimal as D
 
+import pytest
+
 from conftest import METRIC_HDR, PRODUCT_HDR, metric_row, prod_row, write
 from etf_pilot.importers import import_metrics, import_products
 from etf_pilot.metrics import compute_metrics, pct_change
@@ -52,6 +54,49 @@ def test_expense_based_proxy(cfg, conn, tmp_path):
 def test_proxy_disabled_by_config(cfg, conn, tmp_path):
     cfg.allow_revenue_proxy = False
     assert build(cfg, conn, tmp_path)["proxy"]["state"] == "unavailable_disabled"
+
+
+@pytest.mark.parametrize(
+    "metric,label", [("management_fee", "management fee"), ("expense_ratio_gross", "gross expense ratio")]
+)
+def test_report_labels_selected_fee_and_requires_net_expenses_for_proxy(cfg, conn, tmp_path, metric, label):
+    from etf_pilot.reports import generate_report
+
+    build(cfg, conn, tmp_path)
+    cfg.primary_fee_metric = metric
+    rows = (metric_row("other_fee_b", "alpha", metric, "10", "basis_points", "2026-09-30")
+            + metric_row("other_fee_c", "alpha", metric, "15", "basis_points", "2026-10-07"))
+    assert import_metrics(conn, cfg, write(tmp_path, "other_fees.csv", METRIC_HDR + rows), OBS).inserted == 2
+    report = generate_report(conn, cfg, "weekly", date(2026, 10, 8), CUT)
+    for kind in ("markdown", "html"):
+        text = report[kind].read_text()
+        assert f"Asset-weighted {label}" in text
+        assert "Asset-weighted net expense ratio" not in text
+        assert "0.1000%" in text and "0.1500%" in text
+    assert report["context"]["proxy"]["state"] == "unavailable_disabled"
+
+
+def test_weighted_fee_and_proxy_require_common_asset_dates(cfg, conn, tmp_path):
+    build(cfg, conn, tmp_path)
+    rows = metric_row("b2", "beta", "net_assets", "45000000", "currency_units", "2026-10-06", rev=2)
+    assert import_metrics(conn, cfg, write(tmp_path, "amend.csv", METRIC_HDR + rows), OBS).inserted == 1
+    result = compute_metrics(conn, cfg, make_window("weekly", date(2026, 10, 8), cfg.report_timezone), CUT)
+    for name in ("matched", "weighted_fee", "proxy"):
+        assert result[name]["state"] == "unavailable_common_date"
+
+
+def test_report_prints_the_currency_used_to_select_assets(cfg, conn, tmp_path):
+    from etf_pilot.reports import generate_report
+
+    cfg.report_currency = "EUR"
+    import_products(conn, cfg, write(tmp_path, "p.csv", PRODUCT_HDR + prod_row("alpha", "ALFA")))
+    rows = metric_row("asset", "alpha", "net_assets", "200", "currency_units", "2026-10-07", currency="EUR")
+    import_metrics(conn, cfg, write(tmp_path, "m.csv", METRIC_HDR + rows), OBS)
+    report = generate_report(conn, cfg, "weekly", date(2026, 10, 8), CUT)
+    for kind in ("markdown", "html"):
+        text = report[kind].read_text()
+        assert "EUR 200" in text and "USD 200" not in text
+    assert report["context"]["manifest"]["report_currency"] == "EUR"
 
 
 def test_zero_baseline_percent_is_not_applicable():

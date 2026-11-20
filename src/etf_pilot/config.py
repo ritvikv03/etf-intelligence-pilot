@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Literal, Optional
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import yaml
 from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
@@ -88,6 +89,8 @@ class ClientConfig(_Strict):
         if self.mode == "demo":
             if "demo" not in self.database_path:
                 raise ValueError("demo mode requires a database_path containing 'demo' (separate from pilot data)")
+            if "demo" not in self.export_dir:
+                raise ValueError("demo mode requires an export_dir containing 'demo' (separate from pilot exports)")
             if any(s.source_type == "rss" and s.enabled for s in self.sources):
                 raise ValueError("demo mode must not enable live network sources")
             if not self.demo_banner:
@@ -103,9 +106,19 @@ class ClientConfig(_Strict):
             raise ValueError("report_mode as_known_then is not implemented in Milestone 1")
         if self.ai.enabled:
             raise ValueError("ai.enabled=true is not implemented in Milestone 1 (templates only)")
+        try:
+            ZoneInfo(self.report_timezone)
+        except (ZoneInfoNotFoundError, ValueError):
+            raise ValueError(f"report_timezone must name an available IANA time zone: {self.report_timezone}") from None
         for s in self.sources:
-            if s.enabled and s.permission_status in ("permission_required", "unknown"):
+            if not s.enabled:
+                continue
+            if s.permission_status.strip().lower() in ("", "permission_required", "unknown"):
                 raise ValueError(f"source {s.source_id}: cannot enable with permission_status={s.permission_status}")
+            if not (s.permission_reference or "").strip():
+                raise ValueError(f"source {s.source_id}: permission_reference is required to enable a source")
+            if s.source_type != "manual_import":
+                raise ValueError(f"source {s.source_id}: only manual_import is available in Milestone 1")
         return self
 
     @property
