@@ -40,6 +40,7 @@ pillars:
 sources:
   - source_id: approved_news_import
     source_type: manual_import
+    purpose: news
     enabled: false
     permission_status: permission_required
     permission_reference: null
@@ -50,6 +51,7 @@ sources:
     coverage_notes: Awaiting an approved news source and documented retention and reporting rights.
   - source_id: approved_metrics_import
     source_type: manual_import
+    purpose: fund_metrics
     enabled: false
     permission_status: permission_required
     permission_reference: null
@@ -58,3 +60,30 @@ sources:
     internal_report_allowed: false
     redistribution_allowed: false
     coverage_notes: Awaiting approved financial observations. See docs/source_audit.md for candidates.
+  - source_id: sec_edgar_fund_identity
+    source_type: manual_import
+    purpose: product_identity
+    endpoint: https://www.sec.gov/edgar/search/
+    enabled: false
+    permission_status: public_filing_reuse
+    permission_reference: https://www.sec.gov/about/webmaster-frequently-asked-questions
+    retention_mode: metadata_only
+    update_frequency: With published filings
+    coverage_notes: Candidate for manual series, class and ticker verification. Recurring owner pending.
+  - source_id: sec_edgar_fund_statements
+    source_type: manual_import
+    purpose: fund_metrics
+    endpoint: https://www.sec.gov/edgar/search/
+    enabled: false
+    permission_status: public_filing_reuse
+    permission_reference: https://www.sec.gov/about/webmaster-frequently-asked-questions
+    retention_mode: metadata_only
+    update_frequency: With public filings
+    coverage_notes: Candidate for dated fund-level USD net assets. See docs/source_audit.md.
+  - source_id: approved_actual_revenue_import
+    source_type: manual_import
+    purpose: actual_revenue
+    enabled: false
+    permission_status: permission_required
+    retention_mode: metadata_only
+    coverage_notes: Awaiting authoritative revenue observations at the applicable reporting scope.

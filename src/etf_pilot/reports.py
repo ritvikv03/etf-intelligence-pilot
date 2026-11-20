@@ -14,7 +14,7 @@ from .db import utc_now
 from .metrics import compute_metrics
 from .windows import Window, make_window
 
-METHOD_VERSIONS = {"metrics": "decimal_v2", "events": "keyword_rules_v1", "template": "report_v2", "schema": "001"}
+METHOD_VERSIONS = {"metrics": "decimal_v2", "events": "keyword_rules_v1", "template": "report_v3", "schema": "002"}
 STATE_TEXT = {
     "available": "available", "unavailable_baseline": "baseline unavailable", "unavailable_current": "current unavailable",
     "not_active": "not active at date", "stale": "stale (older than policy)", "unapproved": "unapproved",
@@ -166,15 +166,21 @@ def build_context(conn, cfg: ClientConfig, window: Window, cutoff: str, profile:
                          "first_observed": r["first_observed_at"], "note": f"revision {r['revision']}"})
     for oid in sorted(obs_ids):
         r = conn.execute("SELECT * FROM metric_observations WHERE obs_id=?", (oid,)).fetchone()
+        note = [f"revision {r['revision']}", f"{r['scope']} scope", r["evidence_locator"] or "no locator"]
+        if r["currency"]:
+            note.append(r["currency"])
+        if r["available_at"]:
+            note.append(f"source availability {r['available_at']}")
         register.append({"id": oid, "kind": "metric", "source": r["source_id"],
                          "title": f"{lab[r['fund_id']]} {r['metric_name']} = {r['value_original']} {r['unit_original']}",
                          "url": _safe_url(r["evidence_url"]), "date": r["as_of_date"], "first_observed": r["first_observed_at"],
-                         "note": f"revision {r['revision']}; {r['evidence_locator'] or 'no locator'}"})
+                         "note": ", ".join(note)})
 
     pending = conn.execute("SELECT COUNT(*) FROM events WHERE review_status IN ('proposed','needs_review','deferred')").fetchone()[0]
     sources = []
     for s in conn.execute("SELECT * FROM sources ORDER BY source_id"):
         sources.append({"id": s["source_id"], "type": s["source_type"], "enabled": bool(s["enabled"]),
+                        "purpose": s["purpose"] or "unspecified", "frequency": s["update_frequency"] or "manual",
                         "permission": s["permission_status"], "notes": s["coverage_notes"]})
     limitations = [
         "News and events cover only items imported from the listed sources; this is not exhaustive market activity.",

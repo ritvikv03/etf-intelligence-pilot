@@ -1,5 +1,32 @@
 # Offline ETF pilot validation
 
+## Phase 3 source registry and real-data check
+
+November 20, 2026. PR #1 had already merged at `cb213e1`. A fresh virtual environment installed the
+supplied pinned requirements and an editable snapshot of that commit on Linux with Python 3.12.14.
+The baseline passed `pip check`, all 44 tests, the populated CLI workflow and backup restoration.
+
+| Check | Observed result |
+| --- | --- |
+| Suite after the registry changes | `pip check` passed and `python -m pytest -q` passed 48 tests. New cases cover registry validation, source-specific outcomes, purpose separation, identity attribution, and migration rollback. |
+| Populated offline workflow | `init`, two `demo` runs, `doctor`, weekly and custom `report`, accept/reject/defer `review`, and `backup` with restore all passed. The repeated demo exported identical bytes for the same review state. The Alpha/Beta Decimal values matched again. |
+| Populated upgrade | Applied `002_source_registry` to an isolated copy of the Phase 2 backup. SQLite integrity and foreign-key checks passed. Existing report snapshots, metrics, evidence, associations, events, and review actions matched the original rows. |
+| Public-data import | Imported one reviewed IVV identity and one USD fund net-assets observation from the single-class EDGAR filing. Each rerun skipped one duplicate. Both sources reported success and one skipped row in `doctor`. |
+| Observation trace | `obs_4c758c3e717f8c0e` stored USD 888,128,937,468.17 with June 30 measurement, August 25 availability and November 20 first observation. It appears in `rpt_649551f7b9c6` and its manifest. Markdown, HTML and JSON reproduced byte-for-byte at the same cutoff. |
+
+The IVV report showed a current snapshot with an unavailable baseline, weighted fee, and change.
+The import used a reviewed one-product mapping. The approval and ownership settings applied to the
+isolated sample only. The shared pilot configuration remains disabled. See [source audit](source_audit.md#one-off-edgar-import).
+
+The instrumented suite and CLI runs recorded no network calls with socket creation blocked.
+Direct HTTPS through the workspace proxy failed with CONNECT 403 for iShares and the SEC. The
+web reader displayed both official sources. iShares recurring-use permission remains unverified.
+The SEC sample used its published public-filing reuse permission. The end-to-end check covers one
+filing and one date. Automated collection, feed health, amendment ingestion across different
+filings, and broader coverage were outside this check. See [next milestones](next_milestones.md).
+
+## Phase 2 offline baseline
+
 November 20, 2026. The offline analyst workflow passed on Linux x86_64 with Python 3.12.14. Real financial
 coverage still depends on an approved source and reviewed product mappings.
 

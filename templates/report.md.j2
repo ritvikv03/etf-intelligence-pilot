@@ -119,10 +119,10 @@ This pillar has no template in this milestone.
 
 Sources configured:
 
-| Source | Type | Enabled | Permission status | Coverage |
-| --- | --- | --- | --- | --- |
+| Source | Type | Purpose | Enabled | Permission status | Update frequency | Coverage |
+| --- | --- | --- | --- | --- | --- | --- |
 {% for s in r.sources %}
-| {{ s.id | mdx }} | {{ s.type }} | {{ "yes" if s.enabled else "no" }} | {{ s.permission | mdx }} | {{ s.notes | mdx }} |
+| {{ s.id | mdx }} | {{ s.type }} | {{ s.purpose }} | {{ "yes" if s.enabled else "no" }} | {{ s.permission | mdx }} | {{ s.frequency | mdx }} | {{ s.notes | mdx }} |
 {% endfor %}
 
 ## 4. Evidence register and calculation provenance

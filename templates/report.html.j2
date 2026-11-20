@@ -44,8 +44,8 @@ th{background:#f0f0f0}.banner{background:#fff3cd;border:2px solid #d39e00;paddin
 {% elif p.id == "themes_competition" %}<p>Taxonomy not implemented in this milestone; no theme conclusions drawn.</p>
 {% else %}<p>No template for this pillar in this milestone.</p>{% endif %}{% endfor %}
 <h2>3. Limitations and coverage</h2><ul>{% for l in r.limitations %}<li>{{ l }}</li>{% endfor %}</ul>
-<table><tr><th>Source</th><th>Type</th><th>Enabled</th><th>Permission status</th><th>Coverage</th></tr>
-{% for s in r.sources %}<tr><td>{{ s.id }}</td><td>{{ s.type }}</td><td>{{ "yes" if s.enabled else "no" }}</td><td>{{ s.permission }}</td><td>{{ s.notes }}</td></tr>{% endfor %}</table>
+<table><tr><th>Source</th><th>Type</th><th>Purpose</th><th>Enabled</th><th>Permission status</th><th>Update frequency</th><th>Coverage</th></tr>
+{% for s in r.sources %}<tr><td>{{ s.id }}</td><td>{{ s.type }}</td><td>{{ s.purpose }}</td><td>{{ "yes" if s.enabled else "no" }}</td><td>{{ s.permission }}</td><td>{{ s.frequency }}</td><td>{{ s.notes }}</td></tr>{% endfor %}</table>
 <h2>4. Evidence register</h2>
 <table><tr><th>ID</th><th>Kind</th><th>Source(s)</th><th>Description</th><th>Date</th><th>First observed</th><th>Notes</th></tr>
 {% for e in r.register %}<tr id="ev-{{ e.id }}"><td><code>{{ e.id }}</code></td><td>{{ e.kind }}</td><td>{{ e.source }}</td><td>{% if e.url %}<a href="{{ e.url }}" rel="noopener noreferrer">{{ e.title }}</a>{% else %}{{ e.title }}{% endif %}</td><td>{{ e.date }}</td><td>{{ e.first_observed }}</td><td>{{ e.note }}</td></tr>{% endfor %}</table>

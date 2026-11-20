@@ -39,6 +39,8 @@ pillars:
 sources:
   - source_id: demo_news_import
     source_type: manual_import
+    purpose: news
+    owner: Demo fixtures
     enabled: true
     permission_status: synthetic_fixture
     permission_reference: "Synthetic fixture authored for this repository"
@@ -49,6 +51,8 @@ sources:
     coverage_notes: Synthetic news fixtures.
   - source_id: demo_syndicator
     source_type: manual_import
+    purpose: news
+    owner: Demo fixtures
     enabled: true
     permission_status: synthetic_fixture
     permission_reference: "Synthetic fixture authored for this repository"
@@ -59,6 +63,8 @@ sources:
     coverage_notes: Synthetic syndicated copy of a news item.
   - source_id: demo_metrics_import
     source_type: manual_import
+    purpose: fund_metrics
+    owner: Demo fixtures
     enabled: true
     permission_status: synthetic_fixture
     permission_reference: "Synthetic fixture authored for this repository"

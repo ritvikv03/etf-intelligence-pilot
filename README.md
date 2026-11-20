@@ -7,7 +7,8 @@ evidence-linked Markdown and HTML reports with a JSON manifest.
 ## Status
 
 Implemented and tested: config validation, SQLite migrations, product/metric/news CSV importers, identity
-ambiguity handling, net-assets / fee / weighted-fee / expense-proxy calculations, windows (all lookbacks except
+ambiguity handling, an editable source registry and per-source manual import health, net-assets / fee /
+weighted-fee / expense-proxy calculations, windows (all lookbacks except
 `last_run` and `full_history`), keyword events, review queue with audit trail, template report, CLI, backup.
 **Not yet built** (later milestones): Streamlit UI, RSS/Atom collection, SEC N-PORT importer and SEC identity
 resolution, taxonomy/filters, optional Ollama classification, report checkpoints / `last_run`, finalization,
@@ -50,7 +51,7 @@ and report coverage before sharing an internal draft.
 ## Commands
 
 ```bash
-python -m etf_pilot import-products  <client> <file.csv>
+python -m etf_pilot import-products  <client> <file.csv> [--source-id SOURCE]
 python -m etf_pilot import-metrics   <client> <file.csv>
 python -m etf_pilot import-news      <client> <file.csv>
 python -m etf_pilot report <client> weekly [--end YYYY-MM-DD] [--cutoff ISO_UTC]
@@ -72,7 +73,10 @@ Edit the source list in `configs/pilot.yaml`. A named owner records the permissi
 retention, internal reporting, AI use, and redistribution. Enable an approved manual source using a
 `permission_reference` and supply products with verified identifiers. Removing a source from YAML stops
 new imports from it and keeps the archived source record. Keep local input files outside the checkout
-and use distinct pilot and demo database and export paths. See [source audit](docs/source_audit.md).
+and use distinct pilot and demo database and export paths. Assign each source a purpose and owner.
+Product files can record an identity source with `--source-id` and an `identity_evidence_id` per row.
+`doctor` shows each source's latest attributable local import. The SEC IVV sample used a separate
+one-off configuration. See [source audit](docs/source_audit.md#one-off-edgar-import).
 
 ## Methodology (short)
 
