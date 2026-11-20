@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="workspace-token" content="TOKEN_PLACEHOLDER">
+  <title>ETF Intelligence · Research Workspace</title>
+  <link rel="stylesheet" href="/app.css">
+  <script defer src="/app.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to workspace</a>
+  <aside class="sidebar" aria-label="Workspace">
+    <div class="brand">
+      <span class="brandmark" aria-hidden="true"><i></i><i></i><i></i></span>
+      <div><strong>ETF Intelligence</strong><span>Research workspace</span></div>
+    </div>
+    <nav aria-label="Workspace views">
+      <button class="nav-link active" data-view="briefing"><span aria-hidden="true">▤</span>Briefing</button>
+      <button class="nav-link" data-view="sources"><span aria-hidden="true">◉</span>Sources</button>
+      <button class="nav-link" data-view="review"><span aria-hidden="true">✓</span>Analyst review <b id="queue-count"></b></button>
+      <button class="nav-link" data-view="library"><span aria-hidden="true">▱</span>Report library</button>
+    </nav>
+    <div class="sidebar-foot"><span class="dot"></span><div><strong id="workspace-mode">Local workspace</strong><span id="workspace-timezone"></span></div></div>
+  </aside>
+  <main id="main" tabindex="-1">
+    <header class="masthead">
+      <span id="client-name">ETF research</span>
+      <span class="pill neutral" id="mode-badge">Local</span>
+    </header>
+    <div class="container">
+      <div id="message" class="message" role="status" aria-live="polite" hidden></div>
+      <section id="view-briefing" class="view" aria-labelledby="briefing-title">
+        <div class="page-heading">
+          <div><div class="heading-label">RESEARCH BRIEFING</div><h1 id="briefing-title">Market overview</h1><p id="briefing-date">Loading briefing…</p></div>
+          <div class="header-actions" id="briefing-actions"></div>
+        </div>
+        <form id="briefing-form" class="panel toolbar">
+          <label>Lookback<select id="lookback" name="lookback"></select></label>
+          <label id="start-field" hidden>Start date<input id="start-date" type="date" name="start"></label>
+          <label>End date <small>exclusive</small><input id="end-date" type="date" name="end" required></label>
+          <details id="filters-panel" class="filters">
+            <summary><span>Filters</span><span id="filter-count" class="filter-count">All</span></summary>
+            <div class="filter-menu">
+              <fieldset><legend>Issuers</legend><div id="issuer-options"></div></fieldset>
+              <fieldset><legend>Product tags · match all</legend><div id="tag-options"></div></fieldset>
+              <fieldset><legend>Pillars</legend><div id="pillar-options"></div></fieldset>
+              <label class="check" id="model-field" hidden><input id="model-checkbox" type="checkbox"> Use evaluated local model</label>
+            </div>
+          </details>
+          <button type="submit" class="button primary">Run briefing</button>
+        </form>
+        <div id="briefing-content"></div>
+      </section>
+      <section id="view-sources" class="view" aria-labelledby="sources-title" hidden>
+        <div class="page-heading"><div><h1 id="sources-title">Sources</h1><p>Collection health, permissions, and local imports.</p></div><button class="button primary" id="collect-button">Check approved feeds</button></div>
+        <div id="source-content"></div>
+        <form id="import-form" class="panel form-panel">
+          <h2>Import a CSV</h2><p class="muted">Select the dataset and a reviewed local file.</p>
+          <div class="form-grid"><label>Dataset<select id="import-kind"><option value="products">Products</option><option value="metrics">Financial observations</option><option value="news">News archive</option></select></label>
+          <label>Product identity source<select id="import-source"><option value="">Unspecified</option></select></label>
+          <label class="wide">CSV file<input id="import-file" type="file" accept=".csv,text/csv" required></label></div>
+          <button type="submit" class="button primary">Import CSV</button>
+          <ul id="import-errors" class="errors"></ul>
+        </form>
+      </section>
+      <section id="view-review" class="view" aria-labelledby="review-title" hidden>
+        <div class="page-heading"><div><h1 id="review-title">Analyst review</h1><p>Resolve product matches, record decisions, and review tags.</p></div></div>
+        <label class="reviewer-field">Reviewer name<input id="reviewer" type="text" autocomplete="name" placeholder="Your name"></label>
+        <div id="review-content"></div>
+        <form id="tags-form" class="panel form-panel">
+          <h2>Product tags</h2><p class="muted">Reviewed tags are kept when product data is reimported.</p>
+          <label>Product<select id="tag-product"></select></label>
+          <p id="tag-provenance" class="muted"></p>
+          <div id="edit-tags" class="edit-tags"></div>
+          <button class="button primary" type="submit">Save reviewed tags</button>
+        </form>
+      </section>
+      <section id="view-library" class="view" aria-labelledby="library-title" hidden>
+        <div class="page-heading"><div><h1 id="library-title">Report library</h1><p>Open saved briefings and export their evidence manifests.</p></div></div>
+        <label class="reviewer-field">Reviewer name<input id="library-reviewer" type="text" autocomplete="name" placeholder="Your name"></label>
+        <div id="library-content"></div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

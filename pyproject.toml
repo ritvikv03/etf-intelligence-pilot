@@ -16,7 +16,7 @@ dev = ["pytest>=8"]
 where = ["src"]
 
 [tool.setuptools.package-data]
-etf_pilot = ["py.typed"]
+etf_pilot = ["py.typed", "web_assets/*.html", "web_assets/*.css", "web_assets/*.js"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

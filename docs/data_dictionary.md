@@ -15,11 +15,16 @@
 | events | `event_id` per (evidence, type) | `candidate_fund_ids` records the proposal's matches; an accepted review records the resolved `fund_id` and may supply `effective_date` |
 | metric_observations | (source, external_record_id, revision) | `as_of_date` (measurement), `available_at` (source availability, may be empty), `first_observed_at` (set by importer), `effective_from/to` (fees) |
 | review_actions | audit trail | reviewer, decision, previous/new values |
-| reports | `report_id` = hash(profile, window, mode, cutoff, client) | status `draft`; snapshot JSON stored |
+| reports | `report_id` includes profile, window, mode, cutoff, client and applied filters | draft, reviewed, or finalized with a saved snapshot |
+| report_artifacts | `report_id` | Exact Markdown, HTML and manifest for each saved report |
+| report_checkpoints | versioned report definition | Last successful end date, cutoff, and report ID |
+| feed_cursors / feed_runs | source ID / collection attempt | Cached validators and collection outcomes |
+| product_tags / tag_reviews | fund and tag / reviewed fund | Filter assignments and audit-preserving analyst overrides |
 
 Metrics: `net_assets`, `total_assets`, `expense_ratio_net`, `expense_ratio_gross`, `management_fee` (fees as annual decimals);
-`actual_revenue`, `reported_net_flows` can be imported but are not used in any calculation.
+`actual_revenue` uses explicit `period_start` and exclusive `period_end` dates. Revenue comparisons use
+exact periods and consistently matched products. Reported net flows are stored separately.
 Coverage states: available, unavailable_baseline, unavailable_current, stale, incompatible_scope, incompatible_currency,
 incompatible_basis, unapproved, unavailable_common_date, outside_effective_interval, fee_asset_date_gap, not_active.
 Empty = unknown (rejected on import for values); zero is a valid value; percent change from a zero baseline = N/A.
-Taxonomy tables are not implemented yet.
+Taxonomy IDs, labels, dimensions and parent relationships are versioned through the client configuration.

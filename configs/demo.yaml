@@ -31,6 +31,17 @@ universe:
   asset_classes: [equity, fixed_income]
   issuer_ids: [demo_capital]
 watchlist_issuer_ids: [demo_capital]
+taxonomy:
+  - {id: equity, dimension: asset_class, label: Equity}
+  - {id: small_cap, dimension: asset_class, label: Small capitalization, parent_id: equity}
+  - {id: fixed_income, dimension: asset_class, label: Fixed income}
+  - {id: us_exposure, dimension: geography, label: US investment exposure}
+  - {id: international_exposure, dimension: geography, label: International investment exposure}
+  - {id: core, dimension: strategy, label: Core}
+  - {id: factor, dimension: strategy, label: Factor}
+  - {id: thematic, dimension: strategy, label: Thematic}
+  - {id: innovation, dimension: exposure, label: Innovation}
+  - {id: demo_firm, dimension: issuer, label: Demo Capital}
 pillars:
   - {id: product_activity, label: Product activity}
   - {id: assets_growth, label: Assets and growth}

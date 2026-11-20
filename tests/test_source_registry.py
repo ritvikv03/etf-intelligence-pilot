@@ -98,7 +98,7 @@ def test_source_registry_migration_is_atomic_and_preserves_reports(tmp_path):
             migrate(conn, old)
         assert "purpose" not in [r["name"] for r in conn.execute("PRAGMA table_info(sources)")]
 
-        assert migrate(conn) == ["002_source_registry"]
+        assert migrate(conn) == ["002_source_registry", "003_analyst_workspace"]
         assert migrate(conn) == []
         assert conn.execute("SELECT snapshot_json FROM reports WHERE report_id='report'").fetchone()[0] == "{}"
         assert conn.execute("SELECT purpose FROM sources WHERE source_id='archived'").fetchone()[0] is None

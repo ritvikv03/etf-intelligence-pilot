@@ -11,7 +11,8 @@ DECISIONS = {"accept": "accepted", "reject": "rejected", "defer": "deferred"}
 
 def list_pending(conn) -> list[dict]:
     rows = conn.execute(
-        """SELECT e.event_id, e.event_type, e.review_status, e.candidate_fund_ids, ev.title, ev.published_at, ev.evidence_id
+        """SELECT e.event_id, e.event_type, e.review_status, e.candidate_fund_ids,
+                  ev.title, ev.published_at, ev.evidence_id, ev.url
            FROM events e JOIN evidence ev ON ev.evidence_id=e.evidence_id
            WHERE e.review_status IN ('proposed','needs_review','deferred') ORDER BY e.event_id""").fetchall()
     return [dict(r) for r in rows]

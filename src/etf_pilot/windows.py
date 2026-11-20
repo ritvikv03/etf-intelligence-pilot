@@ -31,6 +31,7 @@ class Window:
     baseline_date: date        # day before B's calendar date
     current_date: date         # day before E's calendar date
     timezone: str
+    observed_after: str | None = None
 
     def contains_utc(self, iso: str) -> bool:
         t = datetime.fromisoformat(iso.replace("Z", "+00:00"))
@@ -39,16 +40,15 @@ class Window:
         return self.start_utc <= t < self.end_utc
 
 
-def make_window(lookback: str, end_date: date, tzname: str, start_date: date | None = None) -> Window:
+def make_window(lookback: str, end_date: date, tzname: str, start_date: date | None = None,
+                *, observed_after: str | None = None) -> Window:
     """end_date is the exclusive local end (the report's boundary day, at its start)."""
-    if lookback in ("last_run", "full_history"):
-        raise NotImplementedError(f"lookback '{lookback}' is not implemented in this milestone")
     if lookback not in LOOKBACKS:
         raise ValueError(f"unknown lookback '{lookback}'; choose from {LOOKBACKS}")
     tz = ZoneInfo(tzname)
-    if lookback == "custom":
+    if lookback in {"custom", "last_run", "full_history"}:
         if start_date is None:
-            raise ValueError("custom lookback requires a start date")
+            raise ValueError(f"{lookback} requires a start date resolved by the report")
         start = start_date
     elif lookback == "daily":
         start = end_date - timedelta(days=1)
@@ -59,4 +59,12 @@ def make_window(lookback: str, end_date: date, tzname: str, start_date: date | N
     if start >= end_date:
         raise ValueError("window start must be before end")
     return Window(lookback, start, end_date, local_midnight_utc(start, tz), local_midnight_utc(end_date, tz),
-                  start - timedelta(days=1), end_date - timedelta(days=1), tzname)
+                  start - timedelta(days=1), end_date - timedelta(days=1), tzname, observed_after)
+
+
+def previous_period_start(window: Window) -> date | None:
+    if window.lookback in {"last_run", "full_history"}:
+        return None
+    if window.lookback == "custom":
+        return window.start_local - (window.end_local - window.start_local)
+    return make_window(window.lookback, window.start_local, window.timezone).start_local
