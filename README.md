@@ -11,21 +11,24 @@ ambiguity handling, net-assets / fee / weighted-fee / expense-proxy calculations
 `last_run` and `full_history`), keyword events, review queue with audit trail, template report, CLI, backup.
 **Not yet built** (later milestones): Streamlit UI, RSS/Atom collection, SEC N-PORT importer and SEC identity
 resolution, taxonomy/filters, optional Ollama classification, report checkpoints / `last_run`, finalization,
-`as_known_then` mode. No live endpoint has been contacted. See `docs/`.
+`as_known_then` mode. See `docs/evaluation.md` and `docs/source_audit.md` for validation results.
 
-## Setup (tested: Python 3.12.3, Linux)
+## Setup (verified on Python 3.12.14 and Linux)
+
+Run from the repository root.
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
-python -m pip install -e ".[dev]"  # versions used are recorded in requirements-lock.txt
+python -m pip install -r requirements-lock.txt
+python -m pip install --no-deps -e .
 python -m etf_pilot init demo
 python -m etf_pilot demo           # imports synthetic fixtures, writes the draft report
 python -m pytest
 ```
 
 Outputs: `exports/demo/<report_id>.{md,html,manifest.json}`; database `data/demo/demo.sqlite3`.
-Re-running `demo` inserts nothing new and reproduces the same report ID and text.
+Re-running `demo` skips previously imported rows and reproduces the report ID and all three output files.
 
 ## Commands
 
